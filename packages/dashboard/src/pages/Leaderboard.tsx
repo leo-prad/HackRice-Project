@@ -104,16 +104,9 @@ export default function Leaderboard() {
                   key={entry.login}
                   className={`flex w-full sm:w-1/3 max-w-[280px] flex-col items-center ${cfg.orderClass} transition-all duration-300 hover:-translate-y-1`}
                 >
-                  {/* Player Avatar & Floating Crown/Medal */}
+                  {/* Player Avatar */}
                   <div className="relative mb-4 flex w-full flex-col items-center">
-                    <div className="absolute -top-7 flex items-center justify-center">
-                      <div className={`flex items-center gap-1.5 rounded-full px-3 py-0.5 text-[10px] font-black tracking-wider font-mono ${cfg.badgeBg}`}>
-                        <IconComponent size={12} strokeWidth={2.5} />
-                        <span>{cfg.badge}</span>
-                      </div>
-                    </div>
-
-                    <div className="relative mt-2">
+                    <div className="relative">
                       <img
                         className={`${cfg.avatarSize} rounded-full border-2 bg-slate-900 object-cover ${cfg.ring}`}
                         src={entry.avatarUrl || `https://github.com/${entry.login}.png`}
