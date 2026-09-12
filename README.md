@@ -1,3 +1,33 @@
+# ENV:
+PORT=8787
+
+DATABASE_URL=postgresql://postgres:[HackRice1201]@db.ueqevqwtnyobezugwief.supabase.co:5432/postgres
+
+JWT_SECRET=b7710fd880d83cf1beb078b0a2ebc87776e346cc8307acdba63c49e5e4ce224a
+
+API_BASE_URL=http://localhost:8787
+
+DASHBOARD_URL=http://localhost:5173
+
+# GitHub OAuth app
+GITHUB_CLIENT_ID=Ov23liOJPT6bsBpfaN1U
+
+GITHUB_CLIENT_SECRET=e5baf64e89e3bdb8902e8d068ba4c826cdfbe161
+
+GITHUB_OAUTH_CALLBACK=http://localhost:8787/auth/github/callback
+
+DASHBOARD_URL=http://127.0.0.1:5174
+
+# Gemini
+GEMINI_API_KEY=AIzaSyBfnOkZvUSjSdhebrykAir7QeYzdVxj71M
+
+GEMINI_MODEL=gemini-3.8-flash
+
+# Feature flags
+ENABLE_DECAY=false
+
+DECAY_PERCENT_PER_DAY=2
+
 # Questline
 
 Questline is a Chrome extension and web dashboard that turns GitHub issues into XP quests. The first viewer triggers an AI score, PostgreSQL stores that score forever, and every player sees the same bounty.
