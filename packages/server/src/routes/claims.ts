@@ -12,7 +12,10 @@ claimsRouter.post("/", async (req, res, next) => {
   try {
     if (typeof req.body?.issueNodeId !== "string") return res.status(400).json({ error: "issueNodeId is required" });
     const prior = await query("SELECT * FROM claims WHERE user_id=$1 AND issue_node_id=$2", [req.session!.userId, req.body.issueNodeId]);
-    if (prior.rowCount && prior.rows[0].status !== "abandoned") return res.status(409).json({ error: "You already have an active claim" });
+    // A closed PR (or an abandoned claim) leaves nothing on the user's XP
+    // ledger, so re-claiming is safe and can't be used to farm points.
+    const reopenable = new Set(["abandoned", "closed"]);
+    if (prior.rowCount && !reopenable.has(prior.rows[0].status)) return res.status(409).json({ error: "You already have an active claim" });
     const result = prior.rowCount
       ? await query("UPDATE claims SET status='claimed',pr_url=NULL,pr_number=NULL,pr_repo=NULL,xp_awarded=0,claimed_at=now(),submitted_at=NULL,merged_at=NULL WHERE id=$1 RETURNING *", [prior.rows[0].id])
       : await query("INSERT INTO claims (user_id,issue_node_id) VALUES ($1,$2) RETURNING *", [req.session!.userId, req.body.issueNodeId]);

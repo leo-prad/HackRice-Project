@@ -37,7 +37,7 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, profile
 
   const draw = () => {
     const progress = profile ? Math.min(100, profile.xpIntoLevel / profile.xpForNextLevel * 100) : 0;
-    const finished = claim && (claim.status === "merged" || claim.status === "closed");
+    const finished = claim && claim.status === "merged";
     const awarded = claim ? (claim.xpAwarded ?? (claim as Claim & { xp_awarded?: number }).xp_awarded ?? 0) : 0;
     // While the PR sits in review, keep the big number as the bounty on the
     // line so the user still sees what's on the table; once the claim
@@ -46,7 +46,7 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, profile
     const kicker = !claim ? "QUEST BOUNTY"
       : claim.status === "submitted" ? "AWAITING APPROVAL"
       : claim.status === "merged" ? "XP EARNED"
-      : claim.status === "closed" ? "XP EARNED"
+      : claim.status === "closed" ? "PR CLOSED - RE-CLAIM"
       : "QUEST BOUNTY";
     card.innerHTML = `
       <button class="ql-collapse" aria-label="Collapse Questline">⌄</button>
@@ -108,11 +108,13 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, profile
 }
 
 function actionMarkup(claim: Claim | null) {
-  if (!claim) return '<button class="ql-primary">Claim quest <span>→</span></button>';
+  if (!claim || claim.status === "abandoned" || claim.status === "closed") {
+    const label = claim?.status === "closed" ? "Try again" : "Claim quest";
+    return `<button class="ql-primary">${label} <span>→</span></button>`;
+  }
   if (claim.status === "claimed") return '<button class="ql-primary">Link your PR <span>→</span></button>';
   const awarded = claim.xpAwarded ?? (claim as Claim & { xp_awarded?: number }).xp_awarded ?? 0;
   if (claim.status === "submitted") return `<button class="ql-primary ql-review" disabled>⏳ In Review <span>Awaiting approval</span></button>`;
-  if (claim.status === "closed") return `<button class="ql-primary ql-complete" disabled>✕ PR Closed <span>+${awarded.toLocaleString()} XP</span></button>`;
   return `<button class="ql-primary ql-complete" disabled>✓ Complete <span>+${awarded.toLocaleString()} XP</span></button>`;
 }
 

@@ -76,8 +76,8 @@ function claimIssueNodeId(claim: ClaimRecord) {
 function setClaimState(action: IssueAction, claim?: ClaimRecord) {
   action.button.disabled = false;
   action.button.classList.remove("ql-accept-button-done", "ql-accept-button-progress");
-  if (!claim || claim.status === "abandoned") {
-    action.button.textContent = "Accept";
+  if (!claim || claim.status === "abandoned" || claim.status === "closed") {
+    action.button.textContent = claim?.status === "closed" ? "Retry" : "Accept";
     return;
   }
 
@@ -93,7 +93,7 @@ function setClaimState(action: IssueAction, claim?: ClaimRecord) {
     return;
   }
   action.button.classList.add("ql-accept-button-done");
-  action.button.textContent = claim.status === "merged" ? "Complete" : "Closed";
+  action.button.textContent = "Complete";
 }
 
 function setLoadError(action: IssueAction, error?: unknown) {
