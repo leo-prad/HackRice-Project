@@ -97,6 +97,25 @@ usersRouter.get("/me", async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+usersRouter.get("/me/timeline", async (req, res, next) => {
+  try {
+    const result = await query<{ bucket: Date; xp_earned: string; award_count: string }>(
+      `SELECT bucket,xp_earned,award_count
+       FROM xp_daily
+       WHERE user_id=$1 AND bucket >= now() - INTERVAL '30 days'
+       ORDER BY bucket`,
+      [req.session!.userId],
+    );
+    res.json({
+      timeline: result.rows.map((row) => ({
+        bucket: row.bucket.toISOString(),
+        xpEarned: Number(row.xp_earned),
+        awardCount: Number(row.award_count),
+      })),
+    });
+  } catch (error) { next(error); }
+});
+
 /** Onboarding: save goals, then import GitHub experience into a Gemini-built skill profile. */
 usersRouter.put("/me/goals", async (req, res, next) => {
   try {

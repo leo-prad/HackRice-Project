@@ -11,7 +11,7 @@ async function seed() {
     .map((entry) => entry.trim())
     .filter(Boolean);
 
-  console.log(`Warming GitQuest scores for ${repos.join(", ")}`);
+  console.log(`Warming Questline scores for ${repos.join(", ")}`);
   for (const fullName of repos) {
     const [owner, repo] = fullName.split("/");
     if (!owner || !repo) continue;

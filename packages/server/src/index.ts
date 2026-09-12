@@ -12,7 +12,7 @@ import { startMergePolling } from "./jobs/pollMerges.js";
 const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "100kb" }));
-app.get("/health", (_req, res) => res.json({ ok: true, service: "gitquest" }));
+app.get("/health", (_req, res) => res.json({ ok: true, service: "questline" }));
 app.use("/auth", authRouter);
 app.use("/issues", issuesRouter);
 app.use("/quests", questsRouter);
@@ -26,6 +26,6 @@ app.use((error: any, _req: express.Request, res: express.Response, _next: expres
 
 const port = Number(process.env.PORT) || 8787;
 app.listen(port, () => {
-  console.log(`GitQuest API ready on http://localhost:${port}`);
+  console.log(`Questline API ready on http://localhost:${port}`);
   startMergePolling();
 });

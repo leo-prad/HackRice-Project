@@ -7,7 +7,7 @@ const TIER_LABELS: Record<RecommendationTier, string> = {
   boss: "STRETCH QUEST",
 };
 
-const SYSTEM_PROMPT = `You are the GitQuest AI Quest Matcher.
+const SYSTEM_PROMPT = `You are the Questline AI Quest Matcher.
 
 Given a developer profile and a list of already-scored open-source quests, pick exactly three:
 - safe: near their current ability (comfortable stretch)

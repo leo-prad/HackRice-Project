@@ -33,3 +33,10 @@ document.addEventListener("pjax:end", debouncedRoute);
 window.addEventListener("popstate", debouncedRoute);
 // GitHub swaps page fragments with Turbo, and this catches layouts that omit the event.
 new MutationObserver(debouncedRoute).observe(document.body, { childList: true, subtree: true });
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local" || !changes.questlineToken) return;
+  unmountAll();
+  previousRoute = "";
+  route();
+});

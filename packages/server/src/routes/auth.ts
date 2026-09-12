@@ -10,7 +10,7 @@ authRouter.get("/github/callback", async (req, res, next) => {
   try {
     if (typeof req.query.code !== "string") return res.status(400).send("Missing OAuth code");
     const token = await finishOAuth(req.query.code);
-    res.redirect(`${process.env.DASHBOARD_URL ?? "http://localhost:5173"}/#token=${encodeURIComponent(token)}`);
+    res.redirect(`${process.env.DASHBOARD_URL ?? "http://127.0.0.1:5174"}/#token=${encodeURIComponent(token)}`);
   } catch (error) { next(error); }
 });
 authRouter.post("/pair/create", requireAuth, async (req, res, next) => {

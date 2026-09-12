@@ -1,6 +1,6 @@
-# GitQuest
+# Questline
 
-GitQuest is an AI game engine for open source. It turns live GitHub issues into RPG-style quests: structured difficulty, canonical XP, a skill tree, and a next-quest curriculum. Tutorials teach syntax. LeetCode teaches algorithms. GitQuest helps developers learn how to work on real software.
+Questline is an AI game engine for open source. It turns live GitHub issues into RPG-style quests: structured difficulty, canonical XP, a skill tree, and a next-quest curriculum. Tutorials teach syntax. LeetCode teaches algorithms. Questline helps developers learn how to work on real software.
 
 **Level up by solving real software problems.**
 
@@ -49,7 +49,7 @@ Open PRs from `backend` or `frontend` into `main`.
 
 ## Quick start
 
-Requirements: Node 20+, a shared Postgres database (Supabase works), a GitHub OAuth app, and a Gemini API key.
+Requirements: Node 20+, a shared Tiger Cloud database, a GitHub OAuth app, and a Gemini API key.
 
 1. Install packages.
 
@@ -59,7 +59,7 @@ Requirements: Node 20+, a shared Postgres database (Supabase works), a GitHub OA
 
 2. Copy `.env.example` to `.env` at the **repo root** and fill it in (see [Environment variables](#environment-variables)).
 
-3. Create the database tables (only needed once per database; skip if a teammate already migrated the shared Supabase project).
+3. Create the database tables and Tiger Data analytics objects (only needed once per database).
 
    ```powershell
    npm run migrate
@@ -81,19 +81,19 @@ Requirements: Node 20+, a shared Postgres database (Supabase works), a GitHub OA
 
 6. Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `packages/extension/dist`.
 
-The dashboard runs at `http://localhost:5173` and the API at `http://localhost:8787`.
+The dashboard runs at `http://127.0.0.1:5174` and the API at `http://localhost:8787`.
 
 ## Environment variables
 
-Create **one** `.env` in the **repo root** from `.env.example` (not under `packages/server`). The server loads this file automatically. Collaborators should use the **same shared values** for the database, GitHub OAuth app, JWT secret, and Gemini key — you do **not** need personal Supabase API keys (`anon` / `service_role`). Those are unused.
+Create **one** `.env` in the **repo root** from `.env.example` (not under `packages/server`). The server loads this file automatically. Collaborators should use the **same shared values** for the Tiger Cloud database, GitHub OAuth app, JWT secret, and Gemini key.
 
 | Variable | Required | What to put |
 | --- | --- | --- |
 | `PORT` | No | API port. Default `8787`. |
-| `DATABASE_URL` | Yes | Supabase **Transaction pooler** Postgres URI (see below). |
+| `DATABASE_URL` | Yes | Tiger Cloud PostgreSQL connection string (see below). |
 | `JWT_SECRET` | Yes | Any long random string (team can share one). Example: `openssl rand -hex 32`. |
 | `API_BASE_URL` | Local default | `http://localhost:8787` |
-| `DASHBOARD_URL` | Local default | `http://localhost:5173` |
+| `DASHBOARD_URL` | Local default | `http://127.0.0.1:5174` |
 | `GITHUB_CLIENT_ID` | Yes | From the shared GitHub OAuth App. |
 | `GITHUB_CLIENT_SECRET` | Yes | From the shared GitHub OAuth App. |
 | `GITHUB_OAUTH_CALLBACK` | Local default | `http://localhost:8787/auth/github/callback` |
@@ -103,27 +103,25 @@ Create **one** `.env` in the **repo root** from `.env.example` (not under `packa
 | `DECAY_PERCENT_PER_DAY` | No | Used only when decay is enabled. |
 | `DEMO_REPOS` | No | Comma-separated `owner/repo` worlds for Next Quest and `npm run seed`. Default demo set: Express, FastAPI, Prisma (3 worlds). |
 
-### `DATABASE_URL` (Supabase)
+### `DATABASE_URL` (Tiger Cloud)
 
-Use the **pooler** connection string, not the direct `db.*.supabase.co` host. Many networks cannot resolve the direct host (IPv6-only), which makes `npm run migrate` fail with `ENOTFOUND`.
-
-1. Open Supabase → **Project Settings → Database → Connection string**.
-2. Choose **URI** and the **Transaction pooler** (port `6543`).
+1. Open the shared service in Tiger Cloud.
+2. Open its connection configuration and copy the PostgreSQL connection string.
 3. Paste it as `DATABASE_URL`. It should look like:
 
    ```text
-   postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
+   postgres://tsdbadmin:<password>@<service>.<project>.tsdb.cloud.timescale.com:<port>/tsdb?uselibpqcompat=true&sslmode=require
    ```
 
-You only need this Postgres URI. Do not put Supabase `anon` or `service_role` keys in `.env`.
+The connection string contains the database password, so keep `.env` local and share credentials only through your team’s secure channel.
 
 ### GitHub OAuth (`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`)
 
 Create one OAuth App at [GitHub Developer Settings → OAuth Apps](https://github.com/settings/developers) and share the Client ID and Client Secret with the team:
 
-- Homepage URL: `http://localhost:5173`
+- Homepage URL: `http://127.0.0.1:5174`
 - Authorization callback URL: `http://localhost:8787/auth/github/callback`
-- Scopes requested by GitQuest: `read:user`, `repo` (required for private repository issues)
+- Scopes requested by Questline: `read:user`, `repo` (required for private repository issues)
 
 After signing in, open `/pair`, copy the one-time code, and paste it into the extension popup.
 
@@ -135,7 +133,7 @@ Create an API key at [Google AI Studio](https://aistudio.google.com/apikey) and 
 
 For production, set `DASHBOARD_URL`, `API_BASE_URL`, and `GITHUB_OAUTH_CALLBACK` to the deployed origins. Set `VITE_API_BASE_URL` and `VITE_DASHBOARD_URL` while building the dashboard and extension. Add the production API origin to `packages/extension/public/manifest.json` before publishing the Chrome package.
 
-SQL migrations live in `packages/server/src/migrations/` (`001_init.sql`, `002_gitquest.sql`) and work directly in the Supabase SQL editor.
+SQL migrations live in `packages/server/src/migrations/`. Migration `004_tiger_xp_analytics.sql` turns `xp_events` into a Tiger Data hypertable and creates the `xp_daily` continuous aggregate used by the profile chart.
 
 ## API
 
@@ -152,6 +150,7 @@ SQL migrations live in `packages/server/src/migrations/` (`001_init.sql`, `002_g
 - `GET /claims/mine`
 - `GET /claims/latest-completion`
 - `GET /users/me`
+- `GET /users/me/timeline`
 - `PUT /users/me/goals` (saves goals and runs GitHub→Gemini character seeding)
 - `GET /leaderboard`
 
@@ -161,7 +160,7 @@ Onboarding imports GitHub experience into a starter skill tree (no `xp_events`).
 
 ## Demo script
 
-1. Sign in at `http://localhost:5173` and pick a growth goal.
+1. Sign in at `http://127.0.0.1:5174` and pick a growth goal.
 2. Open **Find my first quest** or go to `/next`.
 3. Open a seeded world, such as `https://github.com/expressjs/express/issues`. The list becomes a Quest Board.
 4. Open a high-XP issue. Claim it from the Quest Card.

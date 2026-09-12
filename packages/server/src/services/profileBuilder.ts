@@ -5,7 +5,7 @@ import { query } from "../db.js";
 import { getViewerExperience, type GitHubExperience } from "./github.js";
 import { normalizeSkillName } from "./analysis.js";
 
-const SYSTEM_PROMPT = `You build a GitQuest developer character sheet from a player's GitHub history and growth goals.
+const SYSTEM_PROMPT = `You build a Questline developer character sheet from a player's GitHub history and growth goals.
 
 Return skills a contributor already shows evidence for, biased toward their stated goals.
 Use short canonical skill names ("Python", "TypeScript", "React", "APIs", "SQL", "Testing", "Concurrency", "DevOps", "Documentation").

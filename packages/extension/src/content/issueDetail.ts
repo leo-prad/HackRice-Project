@@ -1,9 +1,8 @@
 import type { Claim, IssueScore, QuestCompletion, UserProfile } from "@questline/shared";
 import { roman } from "@questline/shared";
 import { api } from "../lib/api";
+import { dashboardPath } from "../lib/config";
 import { storage } from "../lib/storage";
-
-const DASHBOARD = import.meta.env.VITE_DASHBOARD_URL || "http://localhost:5173";
 
 let mounting = false;
 
@@ -33,7 +32,7 @@ export async function mountIssueDetail() {
       }
     } catch { /* Signed-out visitors still see the quest. */ }
     renderCard(score, claim, profile);
-  } catch (error) { console.warn("GitQuest could not mount the quest card", error); }
+  } catch (error) { console.warn("Questline could not mount the quest card", error); }
   finally { mounting = false; }
 }
 
@@ -60,7 +59,7 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, initial
       : "QUEST BOUNTY";
 
     card.innerHTML = `
-      <button class="ql-collapse" aria-label="Collapse GitQuest">⌄</button>
+      <button class="ql-collapse" aria-label="Collapse Questline">⌄</button>
       <div class="ql-orb"><span>Q</span><b>${bigValue >= 1000 ? `${(bigValue / 1000).toFixed(bigValue % 1000 === 0 ? 0 : 1)}k` : bigValue}</b></div>
       <div class="ql-card-body">
         <div class="ql-kicker"><i></i>${kicker}</div>
@@ -113,7 +112,7 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, initial
     const button = card.querySelector<HTMLButtonElement>(".ql-primary");
     if (!button || button.disabled) return;
     button.addEventListener("click", async () => {
-      if (!profile) { window.open(`${DASHBOARD}/pair`, "_blank"); return; }
+      if (!profile) { window.open(dashboardPath("/pair"), "_blank"); return; }
 
       if (!claim || claim.status === "abandoned" || claim.status === "closed") {
         await run(button, async () => {
@@ -171,7 +170,7 @@ function objectivesMarkup(score: IssueScore) {
 
 function actionMarkup(claim: Claim | null) {
   if (!claim || claim.status === "abandoned" || claim.status === "closed") {
-    const label = claim?.status === "closed" ? "Try again" : "Claim quest";
+    const label = claim?.status === "closed" ? "Try again" : "Accept";
     return `<button class="ql-primary">${label} <span>→</span></button>`;
   }
   if (claim.status === "claimed") {
@@ -252,7 +251,7 @@ async function playQuestComplete(completion: QuestCompletion, _score: IssueScore
 
   const next = overlay.querySelector<HTMLButtonElement>(".ql-gain-next")!;
   next.hidden = false;
-  next.addEventListener("click", () => window.open(`${DASHBOARD}/next`, "_blank"));
+  next.addEventListener("click", () => window.open(dashboardPath("/next"), "_blank"));
 
   await new Promise<void>((resolve) => {
     const dismiss = () => resolve();

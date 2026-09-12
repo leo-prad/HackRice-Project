@@ -19,7 +19,7 @@ import { Link } from "react-router-dom";
 import { API_BASE } from "../lib/api";
 
 export default function Login() {
-  const [activeTab, setActiveTab] = useState<"github" | "gitquest">("gitquest");
+  const [activeTab, setActiveTab] = useState<"github" | "questline">("questline");
   const [claimed, setClaimed] = useState(false);
   const [activeCategory, setActiveCategory] = useState<number>(0);
 
@@ -87,7 +87,7 @@ export default function Login() {
           </h1>
 
           <p className="mt-6 max-w-xl text-base sm:text-lg leading-relaxed text-slate-300 font-normal">
-            GitQuest injects an AI gaming engine directly into your browser. Real GitHub issues are scored by difficulty, claims are tracked, and merged PRs are cryptographically verified into XP, skill tree mastery, and global rank.
+            Questline injects an AI gaming engine directly into your browser. Real GitHub issues are scored by difficulty, claims are tracked, and merged PRs are cryptographically verified into XP, skill tree mastery, and global rank.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -149,10 +149,10 @@ export default function Login() {
         <div className="text-center max-w-3xl mx-auto">
           <p className="font-mono text-xs font-bold tracking-[.25em] text-acid uppercase">The Solution</p>
           <h2 className="mt-3 text-4xl sm:text-5xl font-black tracking-tight text-white">
-            How GitQuest rewires your GitHub workflow
+            How Questline rewires your GitHub workflow
           </h2>
           <p className="mt-4 text-slate-400 text-base sm:text-lg">
-            Standard GitHub issues are overwhelming, unranked, and lack clear complexity estimates. GitQuest analyzes issues with AI and awards verified XP straight onto github.com.
+            Standard GitHub issues are overwhelming, unranked, and lack clear complexity estimates. Questline analyzes issues with AI and awards verified XP straight onto github.com.
           </p>
 
           {/* Switcher Tabs */}
@@ -166,12 +166,12 @@ export default function Login() {
               <Github size={16} /> Plain GitHub (Before)
             </button>
             <button
-              onClick={() => setActiveTab("gitquest")}
+              onClick={() => setActiveTab("questline")}
               className={`flex items-center gap-2 rounded-xl px-5 py-2.5 font-mono text-xs font-bold transition duration-200 ${
-                activeTab === "gitquest" ? "bg-acid text-ink shadow-acid font-black" : "text-slate-500 hover:text-white"
+                activeTab === "questline" ? "bg-acid text-ink shadow-acid font-black" : "text-slate-500 hover:text-white"
               }`}
             >
-              <Zap size={16} /> GitQuest Layer (After)
+              <Zap size={16} /> Questline Layer (After)
             </button>
           </div>
         </div>
@@ -186,9 +186,9 @@ export default function Login() {
               <span className="h-3 w-3 rounded-full bg-[#7ce38b]/80" />
               <span className="font-mono text-xs text-slate-400 ml-2">github.com/expressjs/express/issues</span>
             </div>
-            {activeTab === "gitquest" && (
+            {activeTab === "questline" && (
               <span className="flex items-center gap-1.5 rounded-full border border-acid/30 bg-acid/10 px-3 py-0.5 font-mono text-[10px] font-bold text-acid">
-                <Chrome size={12} /> GitQuest Active
+                <Chrome size={12} /> Questline Active
               </span>
             )}
           </div>
@@ -209,7 +209,7 @@ export default function Login() {
                       Fix race condition in router middleware dispatcher
                     </span>
                     <span className="font-mono text-xs text-slate-500">#5921</span>
-                    {activeTab === "gitquest" && (
+                    {activeTab === "questline" && (
                       <span className="rounded-full border border-acid/40 bg-acid/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-acid shadow-[0_0_12px_rgba(185,244,86,0.2)]">
                         +780 XP
                       </span>
@@ -218,7 +218,7 @@ export default function Login() {
                   <p className="mt-1 text-xs text-slate-400">
                     opened 2 days ago by <span className="text-slate-300 font-medium">octocat</span>
                   </p>
-                  {activeTab === "gitquest" && (
+                  {activeTab === "questline" && (
                     <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[10px]">
                       <span className="rounded border border-white/10 bg-black/40 px-2 py-0.5 text-slate-300">Node.js IV</span>
                       <span className="rounded border border-white/10 bg-black/40 px-2 py-0.5 text-slate-300">Concurrency III</span>
@@ -228,7 +228,7 @@ export default function Login() {
                 </div>
               </div>
 
-              {activeTab === "gitquest" ? (
+              {activeTab === "questline" ? (
                 <Link
                   to="/pair"
                   className="self-start sm:self-center shrink-0 rounded-lg bg-acid px-3.5 py-2 font-mono text-xs font-black text-ink shadow-acid hover:brightness-110"
@@ -257,7 +257,7 @@ export default function Login() {
                       Typo in error handler response status documentation
                     </span>
                     <span className="font-mono text-xs text-slate-500">#5928</span>
-                    {activeTab === "gitquest" && (
+                    {activeTab === "questline" && (
                       <span className="rounded-full border border-slate-500/40 bg-slate-500/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-slate-300">
                         +120 XP
                       </span>
@@ -266,7 +266,7 @@ export default function Login() {
                   <p className="mt-1 text-xs text-slate-400">
                     opened 4 hours ago by <span className="text-slate-300 font-medium">junior-dev</span>
                   </p>
-                  {activeTab === "gitquest" && (
+                  {activeTab === "questline" && (
                     <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[10px]">
                       <span className="rounded border border-white/10 bg-black/40 px-2 py-0.5 text-slate-300">Markdown I</span>
                       <span className="rounded border border-white/10 bg-black/40 px-2 py-0.5 text-slate-300">Difficulty: 1.2 / 10</span>
@@ -275,7 +275,7 @@ export default function Login() {
                 </div>
               </div>
 
-              {activeTab === "gitquest" ? (
+              {activeTab === "questline" ? (
                 <Link
                   to="/pair"
                   className="self-start sm:self-center shrink-0 rounded-lg border border-white/20 bg-white/5 px-3.5 py-2 font-mono text-xs font-bold text-white hover:bg-white/10"
@@ -303,7 +303,7 @@ export default function Login() {
                       Eliminate memory leak in HTTP/2 multiplexed stream parser
                     </span>
                     <span className="font-mono text-xs text-slate-500">#5890</span>
-                    {activeTab === "gitquest" && (
+                    {activeTab === "questline" && (
                       <span className="rounded-full border border-violet/40 bg-violet/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-violet shadow-[0_0_12px_rgba(167,139,250,0.3)]">
                         +960 XP
                       </span>
@@ -312,7 +312,7 @@ export default function Login() {
                   <p className="mt-1 text-xs text-slate-400">
                     opened 1 week ago by <span className="text-slate-300 font-medium">maintainer-prime</span>
                   </p>
-                  {activeTab === "gitquest" && (
+                  {activeTab === "questline" && (
                     <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[10px]">
                       <span className="rounded border border-white/10 bg-black/40 px-2 py-0.5 text-slate-300">C++ Addons</span>
                       <span className="rounded border border-white/10 bg-black/40 px-2 py-0.5 text-slate-300">Memory Mgmt IV</span>
@@ -322,7 +322,7 @@ export default function Login() {
                 </div>
               </div>
 
-              {activeTab === "gitquest" ? (
+              {activeTab === "questline" ? (
                 <Link
                   to="/pair"
                   className="self-start sm:self-center shrink-0 rounded-lg bg-acid px-3.5 py-2 font-mono text-xs font-black text-ink shadow-acid hover:brightness-110"
@@ -374,7 +374,7 @@ export default function Login() {
               <span className="font-mono text-xs font-bold text-slate-500 uppercase tracking-wider">Step 02</span>
               <h3 className="mt-2 text-xl font-bold text-white">Claim Your Quest</h3>
               <p className="mt-3 text-sm text-slate-400 leading-relaxed">
-                Lock in the issue directly from github.com or your GitQuest dashboard. You get a personalized objective checklist and skill hints.
+                Lock in the issue directly from github.com or your Questline dashboard. You get a personalized objective checklist and skill hints.
               </p>
             </div>
 
@@ -386,7 +386,7 @@ export default function Login() {
               <span className="font-mono text-xs font-bold text-slate-500 uppercase tracking-wider">Step 03</span>
               <h3 className="mt-2 text-xl font-bold text-white">Code & Ship the PR</h3>
               <p className="mt-3 text-sm text-slate-400 leading-relaxed">
-                Submit your pull request closing the issue. The GitQuest background worker monitors the repo for maintainer merges.
+                Submit your pull request closing the issue. The Questline background worker monitors the repo for maintainer merges.
               </p>
             </div>
 
