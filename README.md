@@ -1,33 +1,3 @@
-# ENV:
-PORT=8787
-
-DATABASE_URL=postgresql://postgres.ueqevqwtnyobezugwief:HackRice1201@aws-0-us-west-2.pooler.supabase.com:6543/postgres
-
-JWT_SECRET=b7710fd880d83cf1beb078b0a2ebc87776e346cc8307acdba63c49e5e4ce224a
-
-API_BASE_URL=http://localhost:8787
-
-DASHBOARD_URL=http://localhost:5173
-
-# GitHub OAuth app
-GITHUB_CLIENT_ID=Ov23liOJPT6bsBpfaN1U
-
-GITHUB_CLIENT_SECRET=e5baf64e89e3bdb8902e8d068ba4c826cdfbe161
-
-GITHUB_OAUTH_CALLBACK=http://localhost:8787/auth/github/callback
-
-DASHBOARD_URL=http://127.0.0.1:5174
-
-# Gemini
-GEMINI_API_KEY=AIzaSyBfnOkZvUSjSdhebrykAir7QeYzdVxj71M
-
-GEMINI_MODEL=gemini-3.8-flash
-
-# Feature flags
-ENABLE_DECAY=false
-
-DECAY_PERCENT_PER_DAY=2
-
 # Questline
 
 Questline is a Chrome extension and web dashboard that turns GitHub issues into XP quests. The first viewer triggers an AI score, PostgreSQL stores that score forever, and every player sees the same bounty.
@@ -43,9 +13,41 @@ Questline is a Chrome extension and web dashboard that turns GitHub issues into 
 - PR author validation, 25% self-owned repo payout, and immutable scores
 - React and Tailwind dashboard with profile, quest log, and global leaderboard
 
+## Repo layout
+
+```text
+HackRice-Project/
+├── .env.example          # Template only — copy to .env at repo root
+├── .env                  # Local secrets (gitignored) — single source of truth
+├── packages/
+│   ├── server/           # Backend: Express API, OAuth, DB, Gemini scoring
+│   ├── dashboard/        # Frontend: React web app
+│   ├── extension/        # Frontend: Chrome extension
+│   └── shared/           # Shared TypeScript types
+└── README.md
+```
+
+Use **one** `.env` at the repo root. Do not create `packages/server/.env`. Never commit secrets into `README.md`.
+
+## Git branches
+
+| Branch | Use for |
+| --- | --- |
+| `main` | Stable shared default. Merge backend/frontend here when ready. |
+| `backend` | API, database, auth, scoring (`packages/server`, `packages/shared`). |
+| `frontend` | Dashboard and Chrome extension (`packages/dashboard`, `packages/extension`). |
+
+```powershell
+git checkout backend    # server / DB work
+git checkout frontend   # UI / extension work
+git checkout main       # integrate and release
+```
+
+Open PRs from `backend` or `frontend` into `main`.
+
 ## Quick start
 
-Requirements: Node 20+, PostgreSQL, a GitHub OAuth app, and a Gemini API key.
+Requirements: Node 20+, a shared Postgres database (Supabase works), a GitHub OAuth app, and a Gemini API key.
 
 1. Install packages.
 
@@ -53,17 +55,18 @@ Requirements: Node 20+, PostgreSQL, a GitHub OAuth app, and a Gemini API key.
    npm install
    ```
 
-2. Copy `.env.example` to `.env`, then fill in the database, GitHub, JWT, and Gemini values.
+2. Copy `.env.example` to `.env` at the **repo root** and fill it in (see [Environment variables](#environment-variables)).
 
-3. Create the database tables.
+3. Create the database tables (only needed once per database; skip if a teammate already migrated the shared Supabase project).
 
    ```powershell
    npm run migrate
    ```
 
-4. Start the API and dashboard.
+4. Build the shared package, then start the API and dashboard.
 
    ```powershell
+   npm run build -w @questline/shared
    npm run dev
    ```
 
@@ -77,15 +80,52 @@ Requirements: Node 20+, PostgreSQL, a GitHub OAuth app, and a Gemini API key.
 
 The dashboard runs at `http://localhost:5173` and the API at `http://localhost:8787`.
 
-## GitHub OAuth setup
+## Environment variables
 
-Create an OAuth app with:
+Create **one** `.env` in the **repo root** from `.env.example` (not under `packages/server`). The server loads this file automatically. Collaborators should use the **same shared values** for the database, GitHub OAuth app, JWT secret, and Gemini key — you do **not** need personal Supabase API keys (`anon` / `service_role`). Those are unused.
+
+| Variable | Required | What to put |
+| --- | --- | --- |
+| `PORT` | No | API port. Default `8787`. |
+| `DATABASE_URL` | Yes | Supabase **Transaction pooler** Postgres URI (see below). |
+| `JWT_SECRET` | Yes | Any long random string (team can share one). Example: `openssl rand -hex 32`. |
+| `API_BASE_URL` | Local default | `http://localhost:8787` |
+| `DASHBOARD_URL` | Local default | `http://localhost:5173` |
+| `GITHUB_CLIENT_ID` | Yes | From the shared GitHub OAuth App. |
+| `GITHUB_CLIENT_SECRET` | Yes | From the shared GitHub OAuth App. |
+| `GITHUB_OAUTH_CALLBACK` | Local default | `http://localhost:8787/auth/github/callback` |
+| `GEMINI_API_KEY` | Yes | From [Google AI Studio](https://aistudio.google.com/apikey). |
+| `GEMINI_MODEL` | No | Default `gemini-3.8-flash`. |
+| `ENABLE_DECAY` | No | `false` unless you want XP decay. |
+| `DECAY_PERCENT_PER_DAY` | No | Used only when decay is enabled. |
+
+### `DATABASE_URL` (Supabase)
+
+Use the **pooler** connection string, not the direct `db.*.supabase.co` host. Many networks cannot resolve the direct host (IPv6-only), which makes `npm run migrate` fail with `ENOTFOUND`.
+
+1. Open Supabase → **Project Settings → Database → Connection string**.
+2. Choose **URI** and the **Transaction pooler** (port `6543`).
+3. Paste it as `DATABASE_URL`. It should look like:
+
+   ```text
+   postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
+   ```
+
+You only need this Postgres URI. Do not put Supabase `anon` or `service_role` keys in `.env`.
+
+### GitHub OAuth (`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`)
+
+Create one OAuth App at [GitHub Developer Settings → OAuth Apps](https://github.com/settings/developers) and share the Client ID and Client Secret with the team:
 
 - Homepage URL: `http://localhost:5173`
-- Callback URL: `http://localhost:8787/auth/github/callback`
+- Authorization callback URL: `http://localhost:8787/auth/github/callback`
 - Scopes requested by Questline: `read:user`, `public_repo`
 
 After signing in, open `/pair`, copy the one-time code, and paste it into the extension popup.
+
+### Gemini (`GEMINI_API_KEY`)
+
+Create an API key at [Google AI Studio](https://aistudio.google.com/apikey) and set `GEMINI_API_KEY`. Teammates can share one key for local development.
 
 ## Environment and deployment
 
