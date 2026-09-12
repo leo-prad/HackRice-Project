@@ -41,7 +41,7 @@ function drawProfile(profile: UserProfile, entries: LeaderboardEntry[]) {
           const url = quest?.issueUrl ?? "#";
           const title = clean(quest?.title ?? "Quest");
           const xp = quest?.xp ?? 0;
-          return `<div class="quest"><a class="quest-body" href="${url}" target="_blank" rel="noopener"><div class="quest-meta"><span class="quest-icon"></span><span class="quest-slug">${slug}</span></div><div class="quest-title">${title}</div><div class="quest-foot"><span class="quest-xp">${xp.toLocaleString()} XP</span><span class="quest-open">Open ↗</span></div></a><button class="quest-link-pr" data-claim-id="${claim.id}" title="Link pull request" aria-label="Link pull request"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></button><form class="quest-pr-form" data-claim-id="${claim.id}" hidden><input type="url" required placeholder="https://github.com/org/repo/pull/123" aria-label="Pull request URL"><button type="submit">Submit</button><p class="quest-pr-error" hidden></p></form></div>`;
+          return `<div class="quest"><a class="quest-body" href="${url}" target="_blank" rel="noopener"><div class="quest-meta"><span class="quest-icon"></span><span class="quest-slug">${slug}</span></div><div class="quest-title">${title}</div><div class="quest-foot"><span class="quest-xp">${xp.toLocaleString()} XP</span><span class="quest-open">Open ↗</span></div></a><button class="quest-link-pr" data-claim-id="${claim.id}" title="Link pull request" aria-label="Link pull request"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></button><form class="quest-pr-form" data-claim-id="${claim.id}" hidden><div class="quest-pr-heading"><span>LINK PULL REQUEST</span><button class="quest-pr-cancel" type="button" aria-label="Cancel">×</button></div><input type="url" required placeholder="https://github.com/org/repo/pull/123" aria-label="Pull request URL"><button type="submit">Submit</button><p class="quest-pr-error" hidden></p></form></div>`;
         })
         .join("")
     : '<div class="empty">No active quests yet.</div>';
@@ -55,15 +55,20 @@ function wireQuestForms() {
     button.addEventListener("click", () => {
       const form = app.querySelector<HTMLFormElement>(`.quest-pr-form[data-claim-id="${button.dataset.claimId}"]`);
       if (!form) return;
-      form.hidden = !form.hidden;
-      if (!form.hidden) form.querySelector<HTMLInputElement>("input")?.focus();
+      form.hidden = false;
+      form.closest(".quest")?.classList.add("quest-pr-open");
+      form.querySelector<HTMLInputElement>("input")?.focus();
     });
   });
 
   app.querySelectorAll<HTMLFormElement>(".quest-pr-form").forEach((form) => {
+    form.querySelector<HTMLButtonElement>(".quest-pr-cancel")?.addEventListener("click", () => {
+      form.hidden = true;
+      form.closest(".quest")?.classList.remove("quest-pr-open");
+    });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const submit = form.querySelector<HTMLButtonElement>("button")!;
+      const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
       const input = form.querySelector<HTMLInputElement>("input")!;
       const error = form.querySelector<HTMLElement>(".quest-pr-error")!;
       submit.disabled = true;
