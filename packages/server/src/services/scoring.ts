@@ -48,22 +48,18 @@ export async function scoreIssue(issueUrl: string, viewerToken?: string): Promis
 
   if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set");
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const response = await ai.models.generateContent({
-    model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
-    contents: prompt,
-    config: {
-      systemInstruction: SYSTEM_PROMPT,
-      responseMimeType: "application/json",
-      responseJsonSchema: {
-        type: "object",
-        properties: { xp: { type: "integer", minimum: 1 } },
-        required: ["xp"],
-      },
-      thinkingConfig: { thinkingBudget: 0 },
+  const response = await ai.interactions.create({
+    model: process.env.GEMINI_MODEL ?? "gemini-3.6-flash",
+    system_instruction: SYSTEM_PROMPT,
+    input: prompt,
+    generation_config: { thinking_level: "low" },
+    response_format: {
+      type: "text",
+      mime_type: "application/json",
+      schema: { type: "object", properties: { xp: { type: "integer", minimum: 1 } }, required: ["xp"], additionalProperties: false },
     },
   });
-  const text = response.text ?? "";
-  const raw = JSON.parse(text || "{}") as { xp?: number };
+  const raw = JSON.parse(response.output_text ?? "{}") as { xp?: number };
   if (!Number.isInteger(raw.xp) || (raw.xp ?? 0) <= 0) throw new Error("Gemini returned an invalid XP score");
   const xp = snapXp(raw.xp!);
 
