@@ -12,6 +12,7 @@ import { startMergePolling } from "./jobs/pollMerges.js";
 const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "100kb" }));
+app.get("/", (_req, res) => res.redirect(process.env.DASHBOARD_URL ?? "http://127.0.0.1:5174"));
 app.get("/health", (_req, res) => res.json({ ok: true, service: "questline" }));
 app.use("/auth", authRouter);
 app.use("/issues", issuesRouter);

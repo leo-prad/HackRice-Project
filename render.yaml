@@ -15,13 +15,13 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: DASHBOARD_URL
-        sync: false
+        value: https://questline-dashboard.onrender.com
       - key: GITHUB_CLIENT_ID
         sync: false
       - key: GITHUB_CLIENT_SECRET
         sync: false
       - key: GITHUB_OAUTH_CALLBACK
-        sync: false
+        value: https://questline-api-p6u3.onrender.com/auth/github/callback
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
@@ -41,7 +41,7 @@ services:
       - key: NODE_VERSION
         value: 20
       - key: VITE_API_BASE_URL
-        sync: false
+        value: https://questline-api-p6u3.onrender.com
     routes:
       - type: rewrite
         source: /*
