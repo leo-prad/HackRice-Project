@@ -1,5 +1,11 @@
 import { mountIssueList } from "./issueList";
-import { mountIssueDetail } from "./issueDetail";
+import { mountIssueDetail, playXpGain } from "./issueDetail";
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "questline:xp-gain" && message.after) {
+    void playXpGain(Number(message.amount) || 0, message.after);
+  }
+});
 
 let previousRoute = "";
 let timer = 0;

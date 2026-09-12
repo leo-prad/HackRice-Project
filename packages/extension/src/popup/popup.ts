@@ -76,8 +76,11 @@ function openPrPaste(quest: HTMLElement) {
     submit.textContent = "Submitting…";
     error.hidden = true;
     try {
-      await api(`/claims/${claimId}/submit`, { method: "POST", body: JSON.stringify({ prUrl: input.value }) });
+      const response = await api<{ xpAwarded: number }>(`/claims/${claimId}/submit`, { method: "POST", body: JSON.stringify({ prUrl: input.value }) });
+      const after = await api<UserProfile>("/users/me");
+      await triggerGainOnActiveTab(response.xpAwarded, after);
       await load();
+      window.close();
     } catch (reason) {
       submit.disabled = false;
       cancel.disabled = false;
@@ -86,6 +89,16 @@ function openPrPaste(quest: HTMLElement) {
       error.textContent = reason instanceof Error ? reason.message : "Could not submit";
     }
   });
+}
+
+async function triggerGainOnActiveTab(amount: number, after: UserProfile) {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id || !tab.url?.startsWith("https://github.com/")) return;
+    await chrome.tabs.sendMessage(tab.id, { type: "questline:xp-gain", amount, after });
+  } catch {
+    // Content script isn't on this tab, nothing to do.
+  }
 }
 
 const clean = (value: string) => value.replace(/[&<>"']/g, "");

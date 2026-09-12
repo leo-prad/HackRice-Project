@@ -106,7 +106,7 @@ function actionMarkup(claim: Claim | null) {
   return `<button class="ql-primary ql-complete" disabled>✓ Complete <span>+${awarded.toLocaleString()} XP</span></button>`;
 }
 
-async function playXpGain(amount: number, after: UserProfile) {
+export async function playXpGain(amount: number, after: UserProfile) {
   const overlay = document.createElement("div");
   overlay.className = "ql-gain";
   overlay.dataset.questlineRoot = "1";
@@ -128,12 +128,17 @@ async function playXpGain(amount: number, after: UserProfile) {
   document.body.append(overlay);
 
   const spawnEdgeConfetti = (edge: HTMLElement, dir: 1 | -1) => {
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 70; i++) {
       const dot = document.createElement("i");
-      dot.style.setProperty("--x", `${dir * (140 + Math.random() * 260)}px`);
-      dot.style.setProperty("--y", `${(Math.random() - 0.5) * 520}px`);
-      dot.style.setProperty("--delay", `${Math.random() * 260}ms`);
-      dot.style.setProperty("--hue", `${[52, 152, 262, 32, 200][i % 5]}`);
+      const distance = 260 + Math.random() * 520;
+      const size = 10 + Math.random() * 10;
+      dot.style.setProperty("--x", `${dir * distance}px`);
+      dot.style.setProperty("--y", `${(Math.random() - 0.5) * 640}px`);
+      dot.style.setProperty("--fall", `${180 + Math.random() * 260}px`);
+      dot.style.setProperty("--rot", `${360 + Math.random() * 540}deg`);
+      dot.style.setProperty("--delay", `${Math.random() * 420}ms`);
+      dot.style.setProperty("--size", `${size}px`);
+      dot.style.setProperty("--hue", `${[52, 152, 262, 32, 200, 340][i % 6]}`);
       edge.append(dot);
     }
   };
