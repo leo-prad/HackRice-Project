@@ -31,8 +31,18 @@ function drawProfile(profile: UserProfile, entries: LeaderboardEntry[]) {
   const shown = entries.slice(0, 5);
   if (userRank && userRank.rank > 5) shown.push(userRank);
   const progress = Math.min(100, profile.xpIntoLevel / profile.xpForNextLevel * 100);
-  const claims = profile.claims.filter((claim) => claim.status === "claimed").slice(0, 3);
-  app.innerHTML = `${brand}<div class="user"><img class="avatar" src="${profile.user.avatarUrl ?? ""}"><div><strong>@${profile.user.githubLogin}</strong><span class="level">LEVEL ${profile.level} · ${profile.user.totalXp.toLocaleString()} XP</span></div></div><div class="bar"><i style="width:${progress}%"></i></div><section class="section"><h3>ACTIVE QUESTS</h3>${claims.length ? claims.map((claim: any) => `<div class="row"><span class="name">${clean(claim.title)}</span><span class="xp">${Number(claim.xp).toLocaleString()} XP</span></div>`).join("") : '<div class="empty">No active quests yet.</div>'}</section><section class="section"><h3>GLOBAL LEADERBOARD</h3>${shown.map((entry) => `<div class="row"><span class="rank">#${entry.rank}</span><img src="${entry.avatarUrl ?? ""}"><span class="name">${clean(entry.login)}</span><span class="xp">${entry.totalXp.toLocaleString()}</span></div>`).join("")}</section><a class="footer" href="${dashboard}" target="_blank">Open dashboard ↗</a>`;
+  const claims = profile.claims.filter((claim) => claim.status === "claimed").slice(0, 5);
+  const quests = claims.length
+    ? claims
+        .map((claim: any) => {
+          const repo = clean(String(claim.repo_full_name ?? claim.repoFullName ?? ""));
+          const number = Number(claim.issue_number ?? claim.issueNumber ?? 0);
+          const url = String(claim.issue_url ?? claim.issueUrl ?? "");
+          return `<a class="quest" href="${url}" target="_blank" rel="noopener"><div class="quest-meta"><span class="quest-icon"></span><span class="quest-slug">${repo}${number ? ` #${number}` : ""}</span></div><div class="quest-title">${clean(claim.title)}</div><div class="quest-foot"><span class="quest-xp">${Number(claim.xp).toLocaleString()} XP</span><span class="quest-open">Open ↗</span></div></a>`;
+        })
+        .join("")
+    : '<div class="empty">No active quests yet.</div>';
+  app.innerHTML = `${brand}<div class="user"><img class="avatar" src="${profile.user.avatarUrl ?? ""}"><div><strong>@${profile.user.githubLogin}</strong><span class="level">LEVEL ${profile.level} · ${profile.user.totalXp.toLocaleString()} XP</span></div></div><div class="bar"><i style="width:${progress}%"></i></div><section class="section"><h3>ACTIVE QUESTS</h3><div class="quests">${quests}</div></section><section class="section"><h3>GLOBAL LEADERBOARD</h3>${shown.map((entry) => `<div class="row"><span class="rank">#${entry.rank}</span><img src="${entry.avatarUrl ?? ""}"><span class="name">${clean(entry.login)}</span><span class="xp">${entry.totalXp.toLocaleString()}</span></div>`).join("")}</section><a class="footer" href="${dashboard}" target="_blank">Open dashboard ↗</a>`;
 }
 
 const clean = (value: string) => value.replace(/[&<>"']/g, "");

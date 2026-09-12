@@ -31,7 +31,10 @@ issuesRouter.post("/score", async (req, res, next) => {
       while (cursor < issueUrls.length) {
         const url = issueUrls[cursor++];
         try { scores.push(await scoreIssue(url, githubToken)); }
-        catch (error) { console.error(`Could not score ${url}`, error); }
+        catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(`Could not score ${url}: ${message}`);
+        }
       }
     };
     await Promise.all(Array.from({ length: Math.min(5, issueUrls.length) }, worker));
