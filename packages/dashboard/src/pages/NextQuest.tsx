@@ -15,12 +15,18 @@ export default function NextQuest() {
     setLoading(true);
     setError("");
     try {
-      const [me, recs] = await Promise.all([
+      const [me, recs, existingRolls] = await Promise.all([
         api<UserProfile>("/users/me"),
         api<{ recommendations: QuestRecommendation[] }>("/quests/recommend", { method: "POST", body: JSON.stringify({}) }),
+        api<{ rolls: Array<RiskRollOffer & { issueNodeId: string }> }>("/quests/rolls"),
       ]);
       setProfile(me);
       setRecommendations(recs.recommendations);
+      const hydrated: Record<string, RiskRollOffer> = {};
+      for (const row of existingRolls.rolls) {
+        hydrated[row.issueNodeId] = { offerId: row.offerId, multiplier: row.multiplier, jackpot: row.jackpot };
+      }
+      setRolls(hydrated);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not find quests");
     } finally {
@@ -31,8 +37,12 @@ export default function NextQuest() {
   useEffect(() => { void load(); }, []);
 
   const roll = async (issueNodeId: string) => {
-    const result = await api<RiskRollOffer>(`/quests/${issueNodeId}/risk-roll`, { method: "POST" });
-    setRolls((current) => ({ ...current, [issueNodeId]: result }));
+    try {
+      const result = await api<RiskRollOffer>(`/quests/${issueNodeId}/risk-roll`, { method: "POST" });
+      setRolls((current) => ({ ...current, [issueNodeId]: result }));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Roll failed");
+    }
   };
   const claim = async (issueNodeId: string, issueUrl: string) => {
     await api("/claims", { method: "POST", body: JSON.stringify({ issueNodeId, offerId: rolls[issueNodeId]?.offerId }) });
@@ -46,8 +56,7 @@ export default function NextQuest() {
     <div className="mx-auto max-w-6xl px-5 py-16 fade-up">
       <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
-          <p className="font-mono text-[10px] font-bold tracking-[.22em] text-acid">YOUR NEXT QUEST</p>
-          <h1 className="mt-3 text-5xl font-black tracking-[-.05em]">A curriculum made of real issues.</h1>
+          <h1 className="text-5xl font-black tracking-[-.05em]">A curriculum made of real issues.</h1>
           <p className="mt-3 max-w-xl text-slate-400">
             Three live GitHub issues, rated for where you are and where you said you want to go.
           </p>
@@ -72,8 +81,7 @@ export default function NextQuest() {
               key={quest.issueNodeId}
               className="flex flex-col rounded-3xl border border-white/[.08] bg-panel p-6"
             >
-              <span className="font-mono text-[10px] font-bold tracking-[.18em] text-acid">{item.tierLabel}</span>
-              <h2 className="mt-5 text-xl font-black leading-snug">{quest.title}</h2>
+              <h2 className="text-xl font-black leading-snug">{quest.title}</h2>
               <p className="mt-2 font-mono text-[11px] text-slate-500">{quest.questKey}</p>
               <div className="mt-5 text-4xl font-black tracking-tight text-white">
                 {quest.xp.toLocaleString()} <span className="text-sm font-bold text-slate-500">XP</span>
@@ -106,9 +114,9 @@ export default function NextQuest() {
               </div>
               <button
                 onClick={() => void claim(quest.issueNodeId, quest.issueUrl)}
-                className="mt-5 flex items-center justify-between rounded-xl bg-acid px-4 py-3 font-extrabold text-ink"
+                className="mt-5 flex items-center justify-between rounded-xl bg-acid px-4 py-3 font-extrabold text-ink transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_22px_rgba(255,196,72,0.55)]"
               >
-                Claim quest {rolled && `· ${rolled.multiplier}×`} <ArrowRight size={16} />
+                Accept Quest {rolled && `· ${rolled.multiplier}×`} <ArrowRight size={16} />
               </button>
             </article>
           );

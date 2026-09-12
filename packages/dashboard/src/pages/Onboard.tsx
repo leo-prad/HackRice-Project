@@ -76,8 +76,7 @@ export default function Onboard() {
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-20 fade-up">
-      <p className="font-mono text-[10px] font-bold tracking-[.22em] text-acid">PLAYER SETUP</p>
-      <h1 className="mt-4 text-5xl font-black tracking-[-.05em]">What do you want to get better at?</h1>
+      <h1 className="text-5xl font-black tracking-[-.05em]">What do you want to get better at?</h1>
       <p className="mt-4 max-w-xl text-slate-400">
         Pick a growth path. Questline will import your GitHub experience and build a starter skill tree around those goals.
       </p>

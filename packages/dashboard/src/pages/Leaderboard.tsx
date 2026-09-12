@@ -69,8 +69,7 @@ export default function Leaderboard() {
       {/* Header */}
       <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
         <div>
-          <p className="font-mono text-[10px] font-bold tracking-[.25em] text-acid uppercase">Global Standings</p>
-          <h1 className="mt-2 text-4xl sm:text-5xl font-black tracking-[-.04em]">Hall of Fame</h1>
+          <h1 className="text-4xl sm:text-5xl font-black tracking-[-.04em]">Hall of Fame</h1>
           <p className="mt-2 text-sm sm:text-base text-slate-400">Open source contributions, ranked by cryptographic proof.</p>
         </div>
         <div className="flex items-center gap-2 self-start rounded-full border border-white/10 bg-white/[.03] px-4 py-2 font-mono text-[11px] text-slate-400 backdrop-blur">
