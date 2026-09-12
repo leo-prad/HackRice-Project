@@ -1,0 +1,30 @@
+{
+  "name": "@questline/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "migrate": "tsx src/migrate.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.22.0",
+    "@questline/shared": "*",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.3.1",
+    "@types/pg": "^8.15.5",
+    "tsx": "^4.20.5"
+  }
+}

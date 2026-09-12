@@ -1,0 +1,17 @@
+{
+  "name": "questline",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev": "concurrently -n server,dashboard -c magenta,cyan \"npm run dev -w @questline/server\" \"npm run dev -w @questline/dashboard\"",
+    "build": "npm run build -w @questline/shared && npm run build -w @questline/server && npm run build -w @questline/dashboard && npm run build -w @questline/extension",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "migrate": "npm run migrate -w @questline/server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "^5.9.2"
+  },
+  "engines": { "node": ">=20" }
+}

@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Questline",
+  "version": "0.1.0",
+  "description": "Turn GitHub issues into XP quests.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://github.com/*", "http://localhost:8787/*"],
+  "action": { "default_popup": "popup/popup.html" },
+  "background": { "service_worker": "background/service-worker.js", "type": "module" },
+  "content_scripts": [{
+    "matches": ["https://github.com/*"],
+    "js": ["content/index.js"],
+    "css": ["content/styles.css"],
+    "run_at": "document_idle"
+  }]
+}
