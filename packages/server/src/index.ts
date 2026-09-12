@@ -5,14 +5,16 @@ import { authRouter } from "./routes/auth.js";
 import { claimsRouter } from "./routes/claims.js";
 import { issuesRouter } from "./routes/issues.js";
 import { leaderboardRouter } from "./routes/leaderboard.js";
+import { questsRouter } from "./routes/quests.js";
 import { usersRouter } from "./routes/users.js";
 
 const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "100kb" }));
-app.get("/health", (_req, res) => res.json({ ok: true, service: "questline" }));
+app.get("/health", (_req, res) => res.json({ ok: true, service: "gitquest" }));
 app.use("/auth", authRouter);
 app.use("/issues", issuesRouter);
+app.use("/quests", questsRouter);
 app.use("/claims", claimsRouter);
 app.use("/users", usersRouter);
 app.use("/leaderboard", leaderboardRouter);
@@ -22,4 +24,6 @@ app.use((error: any, _req: express.Request, res: express.Response, _next: expres
 });
 
 const port = Number(process.env.PORT) || 8787;
-app.listen(port, () => console.log(`Questline API ready on http://localhost:${port}`));
+app.listen(port, () => {
+  console.log(`GitQuest API ready on http://localhost:${port}`);
+});

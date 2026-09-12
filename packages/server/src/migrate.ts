@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { pool } from "./db.js";
 
@@ -7,10 +7,14 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const migration = fileURLToPath(new URL("./migrations/001_init.sql", import.meta.url));
+const directory = fileURLToPath(new URL("./migrations/", import.meta.url));
 try {
-  await pool.query(await readFile(migration, "utf8"));
-  console.log("Questline database migration complete.");
+  const files = (await readdir(directory)).filter((name) => name.endsWith(".sql")).sort();
+  for (const file of files) {
+    await pool.query(await readFile(directory + file, "utf8"));
+    console.log(`Applied ${file}`);
+  }
+  console.log("GitQuest database migration complete.");
 } catch (error) {
   const err = error as { code?: string; message?: string };
   console.error("Migration failed:", err.message ?? error);

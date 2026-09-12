@@ -6,6 +6,6 @@ import { session } from "./lib/api";
 import "./index.css";
 
 const token = new URLSearchParams(location.hash.slice(1)).get("token");
-if (token) { session.set(token); history.replaceState(null, "", "/profile"); }
+if (token) { session.set(token); history.replaceState(null, "", "/onboard"); }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><BrowserRouter><App/></BrowserRouter></React.StrictMode>);

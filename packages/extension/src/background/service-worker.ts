@@ -1,1 +1,1 @@
-chrome.runtime.onInstalled.addListener(() => console.log("Questline is ready."));
+chrome.runtime.onInstalled.addListener(() => console.log("GitQuest is ready."));

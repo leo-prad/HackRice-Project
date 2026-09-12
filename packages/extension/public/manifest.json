@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Questline",
+  "name": "GitQuest",
   "version": "0.1.0",
-  "description": "Turn GitHub issues into XP quests.",
+  "description": "Turn live GitHub issues into RPG-style coding quests.",
   "permissions": ["storage"],
   "host_permissions": ["https://github.com/*", "http://localhost:8787/*"],
   "action": { "default_popup": "popup/popup.html" },

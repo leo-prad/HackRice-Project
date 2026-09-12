@@ -2,20 +2,26 @@ import { Router, type Request } from "express";
 import jwt from "jsonwebtoken";
 import type { SessionPayload } from "../auth/jwt.js";
 import { query } from "../db.js";
-import { scoreIssue } from "../services/scoring.js";
+import { toClaim, type ClaimRow } from "../services/claims.js";
+import { getQuest, scoreIssues } from "../services/scoring.js";
 
 export const issuesRouter = Router();
 
-async function viewerGithubToken(req: Request) {
+async function viewerSession(req: Request): Promise<SessionPayload | undefined> {
   const auth = req.headers.authorization?.replace(/^Bearer\s+/i, "");
   if (!auth || !process.env.JWT_SECRET) return undefined;
   try {
-    const session = jwt.verify(auth, process.env.JWT_SECRET) as SessionPayload;
-    const result = await query<{ github_token: string }>("SELECT github_token FROM users WHERE id=$1", [session.userId]);
-    return result.rows[0]?.github_token;
+    return jwt.verify(auth, process.env.JWT_SECRET) as SessionPayload;
   } catch {
     return undefined;
   }
+}
+
+async function viewerGithubToken(req: Request) {
+  const session = await viewerSession(req);
+  if (!session) return undefined;
+  const result = await query<{ github_token: string }>("SELECT github_token FROM users WHERE id=$1", [session.userId]);
+  return result.rows[0]?.github_token;
 }
 
 issuesRouter.post("/score", async (req, res, next) => {
@@ -25,36 +31,20 @@ issuesRouter.post("/score", async (req, res, next) => {
   }
   try {
     const githubToken = await viewerGithubToken(req);
-    let cursor = 0;
-    const scores: unknown[] = [];
-    const worker = async () => {
-      while (cursor < issueUrls.length) {
-        const url = issueUrls[cursor++];
-        try { scores.push(await scoreIssue(url, githubToken)); }
-        catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          console.error(`Could not score ${url}: ${message}`);
-        }
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(5, issueUrls.length) }, worker));
-    res.json({ scores });
+    res.json({ scores: await scoreIssues(issueUrls, githubToken) });
   } catch (error) { next(error); }
 });
 
 issuesRouter.get("/:nodeId", async (req, res, next) => {
   try {
-    const score = await query("SELECT * FROM issue_scores WHERE issue_node_id=$1", [req.params.nodeId]);
-    if (!score.rowCount) return res.status(404).json({ error: "Issue score not found" });
-    const auth = req.headers.authorization?.replace(/^Bearer\s+/i, "");
+    const score = await getQuest(req.params.nodeId);
+    if (!score) return res.status(404).json({ error: "Quest not found" });
+    const session = await viewerSession(req);
     let claim = null;
-    if (auth) {
-      try {
-        const payload = jwt.verify(auth, process.env.JWT_SECRET!) as SessionPayload;
-        const found = await query("SELECT * FROM claims WHERE user_id=$1 AND issue_node_id=$2", [payload.userId, req.params.nodeId]);
-        claim = found.rows[0] ?? null;
-      } catch { /* Public score still works with an expired token. */ }
+    if (session) {
+      const found = await query<ClaimRow>("SELECT * FROM claims WHERE user_id=$1 AND issue_node_id=$2", [session.userId, req.params.nodeId]);
+      claim = found.rowCount ? toClaim(found.rows[0]) : null;
     }
-    res.json({ score: score.rows[0], claim });
+    res.json({ score, claim });
   } catch (error) { next(error); }
 });
