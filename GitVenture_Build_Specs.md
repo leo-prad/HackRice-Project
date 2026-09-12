@@ -1,4 +1,4 @@
-# Build Spec: Questline
+# Build Spec: GitVenture
 
 A Chrome extension plus web dashboard that turns GitHub issues into XP-bearing quests.
 
@@ -63,7 +63,7 @@ No ORM. No Next.js. No Prisma. No `better-sqlite3` (it has native build problems
 Monorepo, npm workspaces.
 
 ```
-questline/
+gitventure/
 ├── package.json                 # workspaces root
 ├── .env.example
 ├── README.md
@@ -418,7 +418,7 @@ const levelThreshold = (n: number) => Math.floor(1000 * Math.pow(n, 1.6));
 ```json
 {
   "manifest_version": 3,
-  "name": "Questline",
+  "name": "GitVenture",
   "version": "0.1.0",
   "description": "Turn GitHub issues into XP quests.",
   "permissions": ["storage"],
@@ -461,7 +461,7 @@ const observer = new MutationObserver(debounce(route, 150));
 observer.observe(document.body, { childList: true, subtree: true });
 ```
 
-Guard every injection with an idempotency check. Mark injected nodes with `data-questline="1"` and skip anything already marked, or the MutationObserver will inject duplicates infinitely.
+Guard every injection with an idempotency check. Mark injected nodes with `data-gitventure="1"` and skip anything already marked, or the MutationObserver will inject duplicates infinitely.
 
 ### Selector strategy
 
@@ -479,7 +479,7 @@ This survives redesigns. Class-based selectors do not.
 For each issue link found, inject an XP chip immediately after the title text.
 
 ```html
-<span class="ql-chip" data-questline="1">
+<span class="ql-chip" data-gitventure="1">
   <span class="ql-chip-xp">3,500</span>
   <span class="ql-chip-label">XP</span>
 </span>
@@ -647,7 +647,7 @@ Cut in this order: decay job, then cosmetics, then the dashboard profile page (k
 
 ### Seed repo
 
-Create a public repo named `questline-demo` with 8 issues, deliberately spanning the ladder so the XP range is visible:
+Create a public repo named `gitventure-demo` with 8 issues, deliberately spanning the ladder so the XP range is visible:
 
 | Issue | Intended rung |
 |---|---|
@@ -672,7 +672,7 @@ During the demo, open a real issue on a well-known repo and let it score live. T
 
 ### Include a self-owned issue
 
-Claim one issue in `questline-demo` on stage to show the 25% ownership penalty firing. Five seconds of demo time, and it preempts the obvious "can't you just farm your own repo" question.
+Claim one issue in `gitventure-demo` on stage to show the 25% ownership penalty firing. Five seconds of demo time, and it preempts the obvious "can't you just farm your own repo" question.
 
 ---
 

@@ -1,8 +1,8 @@
-import type { IssueScore, QuestRecommendation, RecommendationTier } from "@questline/shared";
-import { GOAL_SKILL_HINTS, SCORING_VERSION, levelProgress, roman, skillLevel, skillLevelThreshold } from "@questline/shared";
+import type { IssueScore, QuestRecommendation } from "@gitventure/shared";
+import { GOAL_SKILL_HINTS, SCORING_VERSION, levelProgress, roman, skillLevel, skillLevelThreshold } from "@gitventure/shared";
 import { query } from "../db.js";
 import { searchIssues } from "./github.js";
-import { matchQuestsWithAi, TIER_LABELS } from "./questMatcher.js";
+import { matchQuestsWithAi } from "./questMatcher.js";
 import { questSkillsFor, scoreIssues, toQuest, type ScoreRow } from "./scoring.js";
 
 /**
@@ -47,7 +47,10 @@ async function loadPlayer(userId: number): Promise<PlayerContext> {
     query<{ total_xp: number }>("SELECT total_xp FROM users WHERE id=$1", [userId]),
     query<{ goal: string }>("SELECT goal FROM user_goals WHERE user_id=$1", [userId]),
     query<{ skill_name: string; xp: number }>("SELECT skill_name,xp FROM user_skills WHERE user_id=$1", [userId]),
-    query<{ issue_node_id: string }>("SELECT issue_node_id FROM claims WHERE user_id=$1 AND status <> 'abandoned'", [userId]),
+    query<{ issue_node_id: string }>(
+      "SELECT issue_node_id FROM claims WHERE user_id=$1 AND status IN ('claimed','submitted','merged')",
+      [userId],
+    ),
     query<{ difficulty_score: string }>(
       `SELECT s.difficulty_score FROM claims c JOIN issue_scores s ON s.issue_node_id=c.issue_node_id
        WHERE c.user_id=$1 AND c.status='merged' ORDER BY c.merged_at DESC LIMIT 3`,
@@ -162,18 +165,45 @@ async function freshCandidates(player: PlayerContext, viewerToken?: string, extr
   }
 }
 
-const pick = (pool: IssueScore[], target: number, used: Set<string>, preferHarder: boolean): IssueScore | undefined =>
-  pool
+/** Pick up to `count` quests nearest the player's baseline, preferring goal overlap then XP spread. */
+function pickByFit(pool: IssueScore[], player: PlayerContext, used: Set<string>, count: number): IssueScore[] {
+  const scored = pool
     .filter((quest) => !used.has(quest.issueNodeId))
+    .map((quest) => {
+      const fit = Math.abs(quest.difficulty - player.baseline);
+      const goalBoost = goalMatches(player, quest).length ? -0.35 : 0;
+      return { quest, rank: fit + goalBoost };
+    })
     .sort((a, b) => {
-      const distance = Math.abs(a.difficulty - target) - Math.abs(b.difficulty - target);
-      if (Math.abs(distance) > 0.001) return distance;
-      return preferHarder ? b.difficulty - a.difficulty : a.difficulty - b.difficulty;
-    })[0];
+      if (Math.abs(a.rank - b.rank) > 0.001) return a.rank - b.rank;
+      return b.quest.xp - a.quest.xp;
+    });
+
+  const picks: IssueScore[] = [];
+  for (const row of scored) {
+    if (picks.length >= count) break;
+    if (used.has(row.quest.issueNodeId)) continue;
+    // Prefer a spread of difficulty when several candidates are similarly close.
+    const tooClose = picks.some((picked) => Math.abs(picked.difficulty - row.quest.difficulty) < 0.4);
+    if (tooClose && picks.length < count - 1 && scored.length > count) continue;
+    picks.push(row.quest);
+    used.add(row.quest.issueNodeId);
+  }
+
+  // Fill remaining slots without the spread filter.
+  for (const row of scored) {
+    if (picks.length >= count) break;
+    if (used.has(row.quest.issueNodeId)) continue;
+    picks.push(row.quest);
+    used.add(row.quest.issueNodeId);
+  }
+
+  return picks;
+}
 
 /**
- * Three quests around the player's current ability. Prefers the AI Quest Matcher; falls back to
- * deterministic Safe / Level-up / Boss picks when Gemini is unavailable.
+ * Three quests around the player's current ability, ranked by XP + difficulty fit.
+ * Prefers the AI Quest Matcher; falls back to deterministic difficulty/XP picks.
  */
 export async function recommendQuests(userId: number, viewerToken?: string, repoFullName?: string): Promise<QuestRecommendation[]> {
   const player = await loadPlayer(userId);
@@ -205,41 +235,27 @@ export async function recommendQuests(userId: number, viewerToken?: string, repo
 
   if (aiPicks?.length) {
     for (const pick of aiPicks) {
-      if (used.has(pick.quest.issueNodeId) || used.has(pick.tier)) continue;
+      if (used.has(pick.quest.issueNodeId)) continue;
       used.add(pick.quest.issueNodeId);
-      used.add(pick.tier);
       recommendations.push({
-        ...pick,
+        quest: pick.quest,
         reasons: pick.reasons.length ? pick.reasons : buildReasons(player, pick.quest),
         potentialReward: pick.potentialReward ?? potentialReward(player, pick.quest),
       });
     }
   }
 
-  const goalPool = pool.filter((quest) => goalMatches(player, quest).length);
-  const targets: Array<{ tier: RecommendationTier; target: number; preferHarder: boolean; preferGoal: boolean }> = [
-    { tier: "safe", target: player.baseline, preferHarder: false, preferGoal: false },
-    { tier: "levelup", target: player.baseline + 1.5, preferHarder: true, preferGoal: true },
-    { tier: "boss", target: Math.min(10, player.baseline + 3.5), preferHarder: true, preferGoal: false },
-  ];
-
-  for (const { tier, target, preferHarder, preferGoal } of targets) {
-    if (used.has(tier)) continue;
-    const quest = (preferGoal ? pick(goalPool, target, used, preferHarder) : undefined) ?? pick(pool, target, used, preferHarder);
-    if (!quest) continue;
-    used.add(quest.issueNodeId);
-    used.add(tier);
-    recommendations.push({
-      tier,
-      tierLabel: TIER_LABELS[tier],
-      quest,
-      reasons: buildReasons(player, quest),
-      potentialReward: potentialReward(player, quest),
-    });
+  if (recommendations.length < 3) {
+    for (const quest of pickByFit(pool, player, used, 3 - recommendations.length)) {
+      recommendations.push({
+        quest,
+        reasons: buildReasons(player, quest),
+        potentialReward: potentialReward(player, quest),
+      });
+    }
   }
 
-  return recommendations.sort((a, b) => {
-    const order = { safe: 0, levelup: 1, boss: 2 };
-    return order[a.tier] - order[b.tier];
-  });
+  return recommendations
+    .slice(0, 3)
+    .sort((a, b) => b.quest.xp - a.quest.xp || b.quest.difficulty - a.quest.difficulty);
 }

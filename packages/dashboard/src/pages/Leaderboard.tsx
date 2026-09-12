@@ -1,7 +1,10 @@
-import type { LeaderboardEntry } from "@questline/shared";
+import type { LeaderboardEntry } from "@gitventure/shared";
 import { Crown, Medal, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import PageShell from "../components/ui/PageShell";
+import DashHeader from "../components/ui/DashHeader";
+import { Surface } from "../components/ui/Surface";
 
 export default function Leaderboard() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -15,7 +18,6 @@ export default function Leaderboard() {
   const topThree = entries.slice(0, 3);
   const remaining = entries.slice(3);
 
-  // Arrange podium visual order: #2 (Silver, left), #1 (Gold, center), #3 (Bronze, right)
   const podiumOrder = [
     { entry: topThree[1], place: 2 },
     { entry: topThree[0], place: 1 },
@@ -24,132 +26,125 @@ export default function Leaderboard() {
 
   const podiumConfig = {
     1: {
-      title: "CHAMPION",
-      badge: "1ST PLACE",
+      title: "Champion",
       icon: Crown,
-      ring: "border-amber-400/80 shadow-[0_0_30px_rgba(251,191,36,0.35)]",
-      badgeBg: "bg-amber-400 text-ink shadow-[0_0_15px_rgba(251,191,36,0.5)]",
-      pillarBg: "from-amber-500/20 via-amber-500/10 to-panel/90 border-amber-400/30",
+      ring: "border-trail/70 shadow-trail",
+      badgeBg: "bg-trail text-void",
+      pillarBg: "from-trail/20 via-trail/8 to-panel/90 border-trail/30",
       pillarHeight: "h-48 sm:h-52",
       avatarSize: "h-20 w-20 sm:h-24 sm:w-24",
       orderClass: "order-1 sm:order-2",
-      accentText: "text-amber-300",
+      accentText: "text-trail",
       pedestalNum: "1",
     },
     2: {
-      title: "RUNNER UP",
-      badge: "2ND PLACE",
+      title: "Runner up",
       icon: Medal,
-      ring: "border-slate-300/80 shadow-[0_0_24px_rgba(203,213,225,0.25)]",
-      badgeBg: "bg-slate-200 text-ink shadow-[0_0_12px_rgba(203,213,225,0.4)]",
-      pillarBg: "from-slate-400/15 via-slate-400/5 to-panel/90 border-slate-300/25",
+      ring: "border-snow/50 shadow-[0_0_24px_rgba(232,237,242,0.12)]",
+      badgeBg: "bg-snow text-void",
+      pillarBg: "from-white/10 via-white/[0.04] to-panel/90 border-white/20",
       pillarHeight: "h-36 sm:h-40",
       avatarSize: "h-16 w-16 sm:h-20 sm:w-20",
       orderClass: "order-2 sm:order-1",
-      accentText: "text-slate-200",
+      accentText: "text-snow",
       pedestalNum: "2",
     },
     3: {
-      title: "CONTENDER",
-      badge: "3RD PLACE",
+      title: "Contender",
       icon: Trophy,
-      ring: "border-amber-600/80 shadow-[0_0_24px_rgba(217,119,6,0.25)]",
-      badgeBg: "bg-amber-600 text-white shadow-[0_0_12px_rgba(217,119,6,0.4)]",
-      pillarBg: "from-amber-700/20 via-amber-700/10 to-panel/90 border-amber-600/30",
-      pillarHeight: "h-32 sm:h-34",
+      ring: "border-beacon/60 shadow-[0_0_24px_rgba(61,255,168,0.18)]",
+      badgeBg: "bg-beacon text-void",
+      pillarBg: "from-beacon/15 via-beacon/5 to-panel/90 border-beacon/25",
+      pillarHeight: "h-32 sm:h-36",
       avatarSize: "h-16 w-16 sm:h-20 sm:w-20",
       orderClass: "order-3 sm:order-3",
-      accentText: "text-amber-400",
+      accentText: "text-beacon",
       pedestalNum: "3",
     },
   } as const;
 
   return (
-    <div className="mx-auto max-w-5xl px-5 py-16 fade-up">
-      {/* Header */}
-      <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
-        <div>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-[-.04em]">Hall of Fame</h1>
-          <p className="mt-2 text-sm sm:text-base text-slate-400">Open source contributions, ranked by cryptographic proof.</p>
-        </div>
-        <div className="flex items-center gap-2 self-start rounded-full border border-white/10 bg-white/[.03] px-4 py-2 font-mono text-[11px] text-slate-400 backdrop-blur">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" /> LIVE LEADERBOARD
-        </div>
-      </div>
+    <PageShell className="max-w-5xl">
+      <DashHeader
+        eyebrow="Standings"
+        title="Hall of Fame"
+        subtitle="Open source contributions, ranked by verified merges."
+        action={
+          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-[11px] text-fog">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-beacon shadow-[0_0_8px_rgba(61,255,168,0.5)]" />
+            Live leaderboard
+          </div>
+        }
+      />
 
       {error && (
-        <div className="mt-10 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center text-sm font-mono text-red-300">
+        <Surface className="mt-10 border-red-500/20 bg-red-500/10 p-6 text-center font-mono text-sm text-red-300">
           {error}
-        </div>
+        </Surface>
       )}
 
       {!error && !entries.length && (
-        <div className="mt-16 rounded-2xl border border-white/[.08] bg-panel/80 p-16 text-center">
-          <Trophy className="mx-auto h-12 w-12 text-slate-600" />
-          <p className="mt-4 font-mono text-sm text-slate-400">No champions yet recorded in this realm.</p>
-          <p className="mt-1 font-mono text-xs text-slate-600">The first quest is yours to claim.</p>
-        </div>
+        <Surface className="mt-16 p-16 text-center">
+          <Trophy className="mx-auto h-12 w-12 text-mist" />
+          <p className="mt-4 font-body text-sm text-fog">No champions yet recorded.</p>
+          <p className="mt-1 font-mono text-xs text-mist">The first quest is yours to claim.</p>
+        </Surface>
       )}
 
-      {/* Top 3 Podium */}
       {topThree.length > 0 && (
         <div className="mt-14 mb-16">
-          <div className="relative flex flex-col sm:flex-row items-center sm:items-end justify-center gap-6 pt-12">
+          <div className="relative flex flex-col items-center justify-center gap-6 pt-12 sm:flex-row sm:items-end">
             {podiumOrder.map(({ entry, place }) => {
               const cfg = podiumConfig[place as 1 | 2 | 3];
-              const IconComponent = cfg.icon;
               return (
                 <div
                   key={entry.login}
-                  className={`flex w-full sm:w-1/3 max-w-[280px] flex-col items-center ${cfg.orderClass} transition-all duration-300 hover:-translate-y-1`}
+                  className={`flex w-full max-w-[280px] flex-col items-center sm:w-1/3 ${cfg.orderClass} transition-transform duration-300 hover:-translate-y-1`}
                 >
-                  {/* Player Avatar */}
                   <div className="relative mb-4 flex w-full flex-col items-center">
                     <div className="relative">
                       <img
-                        className={`${cfg.avatarSize} rounded-full border-2 bg-slate-900 object-cover ${cfg.ring}`}
+                        className={`${cfg.avatarSize} rounded-full border-2 bg-panel object-cover ${cfg.ring}`}
                         src={entry.avatarUrl || `https://github.com/${entry.login}.png`}
                         alt={entry.login}
                       />
-                      <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-ink font-mono text-[10px] font-bold text-white shadow">
+                      <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-void font-mono text-[10px] font-bold text-snow">
                         L{entry.level}
                       </div>
                     </div>
 
-                    <div className="mt-3 w-full text-center px-2">
+                    <div className="mt-3 w-full px-2 text-center">
                       <a
                         href={`https://github.com/${entry.login}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="group inline-flex items-center justify-center max-w-full text-base font-bold text-white transition hover:text-acid"
+                        className="group inline-flex max-w-full items-center justify-center font-body text-base font-semibold text-snow transition-colors hover:text-trail"
                       >
                         <span className="truncate">{entry.login}</span>
                       </a>
-                      <div className="mt-1 flex items-center justify-center gap-2 font-mono text-[11px] text-slate-400">
+                      <div className="mt-1 flex items-center justify-center gap-2 font-mono text-[11px] text-mist">
                         <span>{entry.questsCompleted} quests</span>
-                        <span className="text-slate-600">•</span>
+                        <span className="text-white/20">·</span>
                         <span className={`font-bold ${cfg.accentText}`}>{entry.totalXp.toLocaleString()} XP</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Podium Pedestal Pillar */}
                   <div
-                    className={`relative flex w-full flex-col justify-between overflow-hidden rounded-2xl border bg-gradient-to-b p-3.5 sm:p-4 text-center shadow-2xl backdrop-blur ${cfg.pillarBg} ${cfg.pillarHeight}`}
+                    className={`relative flex w-full flex-col justify-between overflow-hidden rounded-[18px] border bg-gradient-to-b p-3.5 text-center backdrop-blur sm:p-4 ${cfg.pillarBg} ${cfg.pillarHeight}`}
                   >
                     <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
-                    
-                    <div className="font-mono text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+                    <div className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-mist">
                       {cfg.title}
                     </div>
-
                     <div className="flex flex-1 items-center justify-center py-1">
-                      <span className={`font-mono text-4xl sm:text-5xl font-black opacity-30 select-none ${cfg.accentText}`}>
+                      <span
+                        className={`select-none font-display text-4xl font-semibold opacity-30 sm:text-5xl ${cfg.accentText}`}
+                      >
                         #{cfg.pedestalNum}
                       </span>
                     </div>
-
-                    <div className="rounded-lg border border-white/5 bg-black/40 py-1 px-2.5 font-mono text-xs font-bold text-slate-300">
+                    <div className="rounded-lg border border-white/5 bg-void/50 px-2.5 py-1 font-mono text-xs font-bold text-fog">
                       <span className={cfg.accentText}>{entry.totalXp.toLocaleString()}</span> XP
                     </div>
                   </div>
@@ -160,16 +155,15 @@ export default function Leaderboard() {
         </div>
       )}
 
-      {/* Standings Table (Ranks 4+) */}
       {remaining.length > 0 && (
         <div className="mt-8">
           <div className="mb-4 flex items-center justify-between px-2">
-            <h2 className="font-mono text-xs font-bold tracking-wider text-slate-400 uppercase">All Contenders</h2>
-            <span className="font-mono text-[11px] text-slate-600">{entries.length} Total Contenders</span>
+            <h2 className="font-mono text-xs font-bold uppercase tracking-[0.16em] text-mist">All contenders</h2>
+            <span className="font-mono text-[11px] text-mist">{entries.length} total</span>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-white/[.08] bg-panel/90 shadow-2xl">
-            <div className="grid grid-cols-[60px_1fr_80px_90px_110px] border-b border-white/[.07] px-5 py-3 font-mono text-[10px] font-bold tracking-wider text-slate-500 uppercase">
+          <Surface className="overflow-hidden p-0">
+            <div className="grid grid-cols-[60px_1fr_80px_90px_110px] border-b border-white/[0.07] px-5 py-3 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-mist">
               <span>Rank</span>
               <span>Player</span>
               <span>Level</span>
@@ -179,32 +173,34 @@ export default function Leaderboard() {
             {remaining.map((entry) => (
               <div
                 key={entry.login}
-                className="grid grid-cols-[60px_1fr_80px_90px_110px] items-center border-b border-white/[.05] px-5 py-3.5 last:border-0 transition-colors hover:bg-white/[.03]"
+                className="grid grid-cols-[60px_1fr_80px_90px_110px] items-center border-b border-white/[0.05] px-5 py-3.5 transition-colors last:border-0 hover:bg-white/[0.03]"
               >
-                <span className="font-mono text-sm font-bold text-slate-500">
-                  #{entry.rank}
-                </span>
+                <span className="font-mono text-sm font-bold text-mist">#{entry.rank}</span>
                 <a
                   href={`https://github.com/${entry.login}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex min-w-0 items-center gap-3 group"
+                  className="group flex min-w-0 items-center gap-3"
                 >
                   <img
-                    className="h-8 w-8 rounded-full border border-white/10 bg-slate-800 object-cover"
+                    className="h-8 w-8 rounded-full border border-white/10 bg-panel object-cover"
                     src={entry.avatarUrl || `https://github.com/${entry.login}.png`}
                     alt=""
                   />
-                  <b className="truncate text-slate-200 group-hover:text-acid transition-colors">{entry.login}</b>
+                  <b className="truncate font-body text-snow transition-colors group-hover:text-trail">
+                    {entry.login}
+                  </b>
                 </a>
-                <span className="font-mono text-xs text-slate-400">LVL {entry.level}</span>
-                <span className="font-mono text-xs text-slate-400">{entry.questsCompleted ?? 0}</span>
-                <strong className="text-right font-mono text-sm text-white">{entry.totalXp.toLocaleString()}</strong>
+                <span className="font-mono text-xs text-fog">LVL {entry.level}</span>
+                <span className="font-mono text-xs text-fog">{entry.questsCompleted ?? 0}</span>
+                <strong className="text-right font-mono text-sm text-trail">
+                  {entry.totalXp.toLocaleString()}
+                </strong>
               </div>
             ))}
-          </div>
+          </Surface>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

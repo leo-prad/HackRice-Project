@@ -1,13 +1,13 @@
 import type { PoolClient } from "pg";
-import type { IssueScore, QuestAnalysis, QuestSkill, Rarity } from "@questline/shared";
-import { SCORING_VERSION, allocateSkillXp, computeDifficulty, rarityForXp, xpFromDifficulty } from "@questline/shared";
+import type { IssueScore, QuestAnalysis, QuestSkill } from "@gitventure/shared";
+import { SCORING_VERSION, allocateSkillXp, computeDifficulty, xpFromDifficulty } from "@gitventure/shared";
 import { query, withTransaction } from "../db.js";
 import { analyzeIssue } from "./analysis.js";
 import { getIssueBundle, parseIssueUrl } from "./github.js";
 
 export interface ScoreRow {
   issue_node_id: string; issue_url: string; quest_key: string; repo_full_name: string; repo_owner_id: string;
-  issue_number: number; title: string; xp: number; difficulty_score: string | number; rarity: string;
+  issue_number: number; title: string; xp: number; difficulty_score: string | number;
   scoring_version: number; analysis_json: QuestAnalysis | null; days_open: number; scored_at: Date;
 }
 
@@ -32,7 +32,6 @@ export const toQuest = (row: ScoreRow, skills: QuestSkill[] = []): IssueScore =>
   title: row.title,
   xp: row.xp,
   difficulty: Number(row.difficulty_score),
-  rarity: row.rarity as Rarity,
   scoringVersion: row.scoring_version,
   daysOpen: row.days_open,
   scoredAt: row.scored_at.toISOString(),
@@ -68,7 +67,7 @@ async function skillsInTransaction(client: PoolClient, nodeId: string): Promise<
 
 interface QuestFields {
   nodeId: string; issueUrl: string; questKey: string; repoFullName: string; repoOwnerId: number;
-  issueNumber: number; title: string; xp: number; difficulty: number; rarity: Rarity;
+  issueNumber: number; title: string; xp: number; difficulty: number;
   analysis: QuestAnalysis; daysOpen: number;
 }
 
@@ -76,11 +75,12 @@ interface QuestFields {
  * Writes a freshly analyzed quest. The first writer wins, so concurrent viewers converge on one
  * canonical XP value. Rows left behind by an older `scoring_version` are upgraded in place, which
  * keeps `issue_node_id` stable for existing claims.
+ * Legacy `rarity` column is written as a fixed placeholder for schema compatibility.
  */
 async function persistQuest(fields: QuestFields, skills: QuestSkill[]): Promise<IssueScore> {
   const values = [
     fields.nodeId, fields.issueUrl, fields.questKey, fields.repoFullName, fields.repoOwnerId,
-    fields.issueNumber, fields.title, fields.xp, fields.difficulty, fields.rarity,
+    fields.issueNumber, fields.title, fields.xp, fields.difficulty, "none",
     SCORING_VERSION, JSON.stringify(fields.analysis), fields.daysOpen,
   ];
 
@@ -166,7 +166,6 @@ export async function scoreIssue(issueUrl: string, viewerToken?: string): Promis
       title: issue.title,
       xp,
       difficulty,
-      rarity: rarityForXp(xp),
       analysis,
       daysOpen,
     },

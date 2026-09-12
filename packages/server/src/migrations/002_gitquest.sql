@@ -1,4 +1,4 @@
--- Questline engine: structured analysis, deterministic difficulty/XP/rarity, skills, goals, achievements.
+-- GitVenture engine: structured analysis, deterministic difficulty/XP, skills, goals, achievements.
 
 ALTER TABLE issue_scores
   ADD COLUMN IF NOT EXISTS quest_key TEXT,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS achievements (
 INSERT INTO achievements (code, name, description) VALUES
   ('first_blood', 'First Blood', 'Complete your first quest.'),
   ('open_source_hero', 'Open Source Hero', 'Complete 10 quests.'),
-  ('boss_slayer', 'Boss Slayer', 'Defeat a Boss quest.'),
+  ('boss_slayer', 'High Stakes', 'Complete a quest worth 850+ XP.'),
   ('polyglot', 'Polyglot', 'Complete quests across 3 different languages.'),
   ('speedrunner', 'Speedrunner', 'Complete a quest within a day of claiming it.')
 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;

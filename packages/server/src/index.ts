@@ -13,7 +13,7 @@ const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "100kb" }));
 app.get("/", (_req, res) => res.redirect(process.env.DASHBOARD_URL ?? "http://127.0.0.1:5174"));
-app.get("/health", (_req, res) => res.json({ ok: true, service: "questline" }));
+app.get("/health", (_req, res) => res.json({ ok: true, service: "gitventure" }));
 app.use("/auth", authRouter);
 app.use("/issues", issuesRouter);
 app.use("/quests", questsRouter);
@@ -27,6 +27,6 @@ app.use((error: any, _req: express.Request, res: express.Response, _next: expres
 
 const port = Number(process.env.PORT) || 8787;
 app.listen(port, () => {
-  console.log(`Questline API ready on http://localhost:${port}`);
+  console.log(`GitVenture API ready on http://localhost:${port}`);
   startMergePolling();
 });

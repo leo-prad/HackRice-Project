@@ -1,11 +1,16 @@
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8787";
-const TOKEN_KEY = "questlineToken";
+const TOKEN_KEY = "gitventureToken";
 export const session = {
   get: () => localStorage.getItem(TOKEN_KEY),
   set: (token: string) => localStorage.setItem(TOKEN_KEY, token),
   clear: () => {
-    document.dispatchEvent(new Event("questline:sign-out"));
+    document.dispatchEvent(new Event("gitventure:sign-out"));
     localStorage.removeItem(TOKEN_KEY);
+    try {
+      sessionStorage.removeItem("gitventureIngestSeen");
+    } catch {
+      /* ignore */
+    }
   },
 };
 

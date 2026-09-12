@@ -1,11 +1,11 @@
 services:
   - type: web
-    name: questline-api
+    name: gitventure-api
     runtime: node
     plan: free
     rootDir: .
-    buildCommand: npm install && npm run build -w @questline/shared && npm run build -w @questline/server && npm run migrate -w @questline/server
-    startCommand: npm run start -w @questline/server
+    buildCommand: npm install && npm run build -w @gitventure/shared && npm run build -w @gitventure/server && npm run migrate -w @gitventure/server
+    startCommand: npm run start -w @gitventure/server
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
@@ -15,13 +15,13 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: DASHBOARD_URL
-        value: https://questline-dashboard.onrender.com
+        value: https://gitventure-dashboard.onrender.com
       - key: GITHUB_CLIENT_ID
         sync: false
       - key: GITHUB_CLIENT_SECRET
         sync: false
       - key: GITHUB_OAUTH_CALLBACK
-        value: https://questline-api-p6u3.onrender.com/auth/github/callback
+        value: https://gitventure-api-p6u3.onrender.com/auth/github/callback
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
@@ -32,16 +32,16 @@ services:
         sync: false
 
   - type: web
-    name: questline-dashboard
+    name: gitventure-dashboard
     runtime: static
     rootDir: .
-    buildCommand: npm install && npm run build -w @questline/shared && npm run build -w @questline/dashboard
+    buildCommand: npm install && npm run build -w @gitventure/shared && npm run build -w @gitventure/dashboard
     staticPublishPath: packages/dashboard/dist
     envVars:
       - key: NODE_VERSION
         value: 20
       - key: VITE_API_BASE_URL
-        value: https://questline-api-p6u3.onrender.com
+        value: https://gitventure-api-p6u3.onrender.com
     routes:
       - type: rewrite
         source: /*

@@ -1,6 +1,8 @@
-import type { Claim, IssueScore } from "@questline/shared";
+import type { Claim, IssueScore } from "@gitventure/shared";
 import { api } from "../lib/api";
-import { dashboardPath } from "../lib/config";
+import { bumpClaimsEpoch, onClaimsEpoch } from "../lib/claimSync";
+import { openDashboard } from "../lib/openDashboard";
+import { ROUTES } from "../lib/routes";
 import { storage } from "../lib/storage";
 
 type ClaimRecord = Claim & { issue_node_id?: string };
@@ -10,10 +12,14 @@ type IssueAction = {
   controls: HTMLDivElement;
   pill: HTMLSpanElement;
   button: HTMLButtonElement;
+  unclaim: HTMLButtonElement;
   notice: HTMLSpanElement;
+  score?: IssueScore;
+  claim?: ClaimRecord;
 };
 
 const pending = new Set<string>();
+const liveActions = new Map<string, IssueAction>();
 
 const canonical = (href: string) => {
   const url = new URL(href, location.origin);
@@ -42,8 +48,8 @@ function findIssueRow(link: HTMLAnchorElement): HTMLElement | null {
 }
 
 function existingAction(row: HTMLElement, issueUrl: string) {
-  return Array.from(row.querySelectorAll<HTMLElement>("[data-questline-issue-url]"))
-    .some((node) => node.dataset.questlineIssueUrl === issueUrl);
+  return Array.from(row.querySelectorAll<HTMLElement>("[data-gitventure-issue-url]"))
+    .some((node) => node.dataset.gitventureIssueUrl === issueUrl);
 }
 
 function createAction(row: HTMLElement, issueUrl: string, issueTitle: string): IssueAction {
@@ -51,9 +57,9 @@ function createAction(row: HTMLElement, issueUrl: string, issueTitle: string): I
 
   const root = document.createElement("div");
   root.className = "ql-list-actions";
-  root.dataset.questline = "1";
-  root.dataset.questlineRoot = "1";
-  root.dataset.questlineIssueUrl = issueUrl;
+  root.dataset.gitventure = "1";
+  root.dataset.gitventureRoot = "1";
+  root.dataset.gitventureIssueUrl = issueUrl;
 
   const controls = document.createElement("div");
   controls.className = "ql-list-controls";
@@ -70,14 +76,22 @@ function createAction(row: HTMLElement, issueUrl: string, issueTitle: string): I
   button.disabled = true;
   button.setAttribute("aria-label", `Accept quest ${issueTitle}`);
 
+  const unclaim = document.createElement("button");
+  unclaim.className = "ql-list-unclaim";
+  unclaim.type = "button";
+  unclaim.textContent = "×";
+  unclaim.title = "Unclaim quest";
+  unclaim.setAttribute("aria-label", `Unclaim quest ${issueTitle}`);
+  unclaim.hidden = true;
+
   const notice = document.createElement("span");
   notice.className = "ql-list-notice";
   notice.hidden = true;
 
-  controls.append(pill, button);
+  controls.append(pill, button, unclaim);
   root.append(controls, notice);
   row.append(root);
-  return { root, controls, pill, button, notice };
+  return { root, controls, pill, button, unclaim, notice };
 }
 
 function claimIssueNodeId(claim: ClaimRecord) {
@@ -85,9 +99,12 @@ function claimIssueNodeId(claim: ClaimRecord) {
 }
 
 function setClaimState(action: IssueAction, claim?: ClaimRecord) {
+  action.claim = claim;
   action.notice.hidden = true;
   action.button.disabled = false;
   action.button.classList.remove("ql-accept-button-done", "ql-accept-button-progress");
+  action.unclaim.hidden = !(claim && (claim.status === "claimed" || claim.status === "submitted"));
+
   if (!claim || claim.status === "abandoned" || claim.status === "closed") {
     action.button.textContent = "Accept";
     return;
@@ -106,9 +123,11 @@ function setClaimState(action: IssueAction, claim?: ClaimRecord) {
   }
   action.button.classList.add("ql-accept-button-done");
   action.button.textContent = "Accepted";
+  action.unclaim.hidden = true;
 }
 
 function setQuestPill(action: IssueAction, score: IssueScore) {
+  action.score = score;
   action.pill.classList.remove("ql-list-xp-loading");
   action.pill.textContent = `${score.xp.toLocaleString()} XP`;
   action.pill.setAttribute("aria-label", `Quest worth ${score.xp} XP`);
@@ -120,7 +139,8 @@ function setLoadError(action: IssueAction, error?: unknown) {
   action.pill.textContent = "XP unavailable";
   action.button.textContent = "Accept";
   action.button.disabled = true;
-  action.notice.textContent = "Could not load Questline. Refresh to retry.";
+  action.unclaim.hidden = true;
+  action.notice.textContent = "Could not load GitVenture. Refresh to retry.";
   action.notice.hidden = false;
   if (error instanceof Error) action.root.title = error.message;
 }
@@ -128,10 +148,11 @@ function setLoadError(action: IssueAction, error?: unknown) {
 function setPairRequired(action: IssueAction) {
   action.pill.classList.remove("ql-list-xp-loading");
   action.pill.textContent = "Pair required";
-  action.pill.setAttribute("aria-label", "Pair Questline to see this quest's XP");
+  action.pill.setAttribute("aria-label", "Pair GitVenture to see this quest's XP");
   action.button.textContent = "Accept";
   action.button.disabled = false;
   action.button.title = "Pair your extension first";
+  action.unclaim.hidden = true;
   action.notice.textContent = "Pair your extension from your account first.";
   action.notice.hidden = false;
   action.root.removeAttribute("title");
@@ -139,13 +160,33 @@ function setPairRequired(action: IssueAction) {
   action.button.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    window.open(dashboardPath("/pair"), "_blank");
+    openDashboard(ROUTES.pair);
   });
 }
 
 function wireAccept(action: IssueAction, score: IssueScore, initialClaim?: ClaimRecord) {
   let claim = initialClaim;
   setClaimState(action, claim);
+
+  action.unclaim.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!claim || (claim.status !== "claimed" && claim.status !== "submitted")) return;
+    const previous = claim;
+    action.unclaim.disabled = true;
+    setClaimState(action, { ...claim, status: "abandoned" });
+    try {
+      await api(`/claims/${previous.id}/abandon`, { method: "POST" });
+      await bumpClaimsEpoch(previous.id);
+      claim = undefined;
+      setClaimState(action, undefined);
+    } catch {
+      claim = previous;
+      setClaimState(action, previous);
+    } finally {
+      action.unclaim.disabled = false;
+    }
+  });
 
   action.button.addEventListener("click", async (event) => {
     event.preventDefault();
@@ -154,7 +195,7 @@ function wireAccept(action: IssueAction, score: IssueScore, initialClaim?: Claim
 
     const token = await storage.token();
     if (!token) {
-      window.open(dashboardPath("/pair"), "_blank");
+      openDashboard(ROUTES.pair);
       return;
     }
 
@@ -167,6 +208,7 @@ function wireAccept(action: IssueAction, score: IssueScore, initialClaim?: Claim
         body: JSON.stringify({ issueNodeId: score.issueNodeId }),
       })).claim;
       setClaimState(action, claim);
+      await bumpClaimsEpoch(claim.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not claim this quest";
       if (message.toLowerCase().includes("already have an active claim")) {
@@ -179,6 +221,23 @@ function wireAccept(action: IssueAction, score: IssueScore, initialClaim?: Claim
       }
     }
   });
+}
+
+async function refreshLiveClaims() {
+  try {
+    const result = await api<{ claims: ClaimRecord[] }>("/claims/mine");
+    const byNode = new Map(
+      result.claims
+        .map((claim) => [claimIssueNodeId(claim), claim] as const)
+        .filter((entry): entry is [string, ClaimRecord] => Boolean(entry[0])),
+    );
+    for (const action of liveActions.values()) {
+      if (!action.score || !action.root.isConnected) continue;
+      setClaimState(action, byNode.get(action.score.issueNodeId));
+    }
+  } catch {
+    /* keep existing UI */
+  }
 }
 
 export async function mountIssueList() {
@@ -225,15 +284,18 @@ export async function mountIssueList() {
       scoredUrls.add(issueUrl);
       setQuestPill(action, score);
       wireAccept(action, score, claims.get(score.issueNodeId));
+      liveActions.set(issueUrl, action);
     }
 
     for (const [issueUrl, action] of actions) {
       if (!scoredUrls.has(issueUrl)) setLoadError(action);
     }
   } catch (error) {
-    console.warn("Questline could not rate this quest board", error);
+    console.warn("GitVenture could not rate this quest board", error);
     actions.forEach((action) => setLoadError(action, error));
   } finally {
     actions.forEach((_, issueUrl) => pending.delete(issueUrl));
   }
 }
+
+onClaimsEpoch(() => void refreshLiveClaims());

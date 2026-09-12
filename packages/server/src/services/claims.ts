@@ -1,4 +1,4 @@
-import type { Claim, ClaimStatus, IssueScore, QuestCompletion } from "@questline/shared";
+import type { Claim, ClaimStatus, IssueScore, QuestCompletion } from "@gitventure/shared";
 import { query } from "../db.js";
 import { questSkillsFor, toQuest, type ScoreRow } from "./scoring.js";
 
@@ -30,11 +30,11 @@ export const toClaim = (row: ClaimRow, score?: IssueScore): Claim => ({
   ...(score ? { score } : {}),
 });
 
-/** Claims for one player, each hydrated with its quest so the UI can show XP, rarity, and skills. */
+/** Claims for one player, each hydrated with its quest so the UI can show XP and skills. */
 export async function claimsForUser(userId: number): Promise<Claim[]> {
   const claims = await query<ClaimRow & ScoreRow>(
     `SELECT c.*, s.issue_url, s.quest_key, s.repo_full_name, s.repo_owner_id, s.issue_number, s.title,
-            s.xp, s.difficulty_score, s.rarity, s.scoring_version, s.analysis_json, s.days_open, s.scored_at
+            s.xp, s.difficulty_score, s.scoring_version, s.analysis_json, s.days_open, s.scored_at
      FROM claims c JOIN issue_scores s ON s.issue_node_id = c.issue_node_id
      WHERE c.user_id = $1 ORDER BY c.claimed_at DESC`,
     [userId],

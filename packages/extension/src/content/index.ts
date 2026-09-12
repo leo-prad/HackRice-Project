@@ -5,7 +5,7 @@ let previousRoute = "";
 let timer = 0;
 
 function unmountAll() {
-  document.querySelectorAll('[data-questline-root="1"]').forEach((node) => node.remove());
+  document.querySelectorAll('[data-gitventure-root="1"]').forEach((node) => node.remove());
   document.querySelectorAll(".ql-issue-row").forEach((node) => node.classList.remove("ql-issue-row"));
 }
 
@@ -35,7 +35,7 @@ window.addEventListener("popstate", debouncedRoute);
 new MutationObserver(debouncedRoute).observe(document.body, { childList: true, subtree: true });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== "local" || !changes.questlineToken) return;
+  if (areaName !== "local" || !changes.gitventureToken) return;
   unmountAll();
   previousRoute = "";
   route();

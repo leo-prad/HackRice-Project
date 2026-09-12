@@ -1,5 +1,5 @@
 {
-  "name": "@questline/server",
+  "name": "@gitventure/server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.22.0",
-    "@questline/shared": "*",
+    "@gitventure/shared": "*",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",

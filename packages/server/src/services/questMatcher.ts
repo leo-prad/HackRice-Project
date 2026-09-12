@@ -1,22 +1,15 @@
-import type { IssueScore, QuestRecommendation, RecommendationTier } from "@questline/shared";
+import type { IssueScore, QuestRecommendation } from "@gitventure/shared";
 import { GoogleGenAI } from "@google/genai";
 
-const TIER_LABELS: Record<RecommendationTier, string> = {
-  safe: "SAFE BET",
-  levelup: "LEVEL-UP QUEST",
-  boss: "STRETCH QUEST",
-};
+const SYSTEM_PROMPT = `You are the GitVenture AI Quest Matcher.
 
-const SYSTEM_PROMPT = `You are the Questline AI Quest Matcher.
-
-Given a developer profile and a list of already-scored open-source quests, pick exactly three:
-- safe: near their current ability (comfortable stretch)
-- levelup: slightly harder, ideally advances a stated growth goal
-- boss: significantly harder challenge
+Given a developer profile and already-scored open-source quests, pick exactly three distinct quests that fit the player.
+Rank them by how well they match the player's difficulty baseline and goals — do NOT label them as safe, level-up, or stretch.
+Prefer a spread of difficulty when possible so the player sees varied XP bounties.
 
 Only choose quest_key values from the provided candidate list. Never invent issues.
-Reasons should be short, concrete, and mention skills or goals. potential_reward is optional (e.g. "Testing LVL 3 → 4").
-Do not change XP, difficulty, or rarity.`;
+Reasons should be short, concrete, and mention skills, difficulty, or XP. potential_reward is optional (e.g. "Testing LVL 3 → 4").
+Do not change XP or difficulty.`;
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -28,12 +21,11 @@ const RESPONSE_SCHEMA = {
       items: {
         type: "object",
         properties: {
-          tier: { type: "string", enum: ["safe", "levelup", "boss"] },
           quest_key: { type: "string" },
           reasons: { type: "array", items: { type: "string" }, maxItems: 4 },
           potential_reward: { type: "string" },
         },
-        required: ["tier", "quest_key", "reasons"],
+        required: ["quest_key", "reasons"],
         additionalProperties: false,
       },
     },
@@ -54,7 +46,6 @@ function compactCandidates(pool: IssueScore[]) {
     quest_key: quest.questKey,
     title: quest.title,
     difficulty: quest.difficulty,
-    rarity: quest.rarity,
     xp: quest.xp,
     skills: quest.skills.map((skill) => `${skill.name} L${skill.requiredLevel}`),
     objectives: quest.analysis?.objectives?.slice(0, 3) ?? [],
@@ -62,8 +53,7 @@ function compactCandidates(pool: IssueScore[]) {
 }
 
 /**
- * Ask Gemini to choose Safe / Level-up / Boss from an existing scored pool.
- * Returns null when the model is unavailable or returns invalid keys so callers can fall back.
+ * Ask Gemini to pick three scored quests for the player (XP + difficulty only — no tier labels).
  */
 export async function matchQuestsWithAi(
   player: MatcherPlayer,
@@ -91,24 +81,22 @@ export async function matchQuestsWithAi(
     });
 
     const raw = JSON.parse(response.output_text ?? "{}") as {
-      picks?: Array<{ tier?: string; quest_key?: string; reasons?: string[]; potential_reward?: string }>;
+      picks?: Array<{ quest_key?: string; reasons?: string[]; potential_reward?: string }>;
     };
 
     const used = new Set<string>();
     const recommendations: QuestRecommendation[] = [];
     for (const pick of raw.picks ?? []) {
-      const tier = pick.tier as RecommendationTier | undefined;
-      if (!tier || !TIER_LABELS[tier] || !pick.quest_key) continue;
-      if (used.has(tier) || used.has(pick.quest_key)) continue;
+      if (!pick.quest_key || used.has(pick.quest_key)) continue;
       const quest = byKey.get(pick.quest_key);
       if (!quest) continue;
-      used.add(tier);
       used.add(pick.quest_key);
       recommendations.push({
-        tier,
-        tierLabel: TIER_LABELS[tier],
         quest,
-        reasons: (pick.reasons ?? []).filter((reason) => typeof reason === "string").map((reason) => reason.slice(0, 140)).slice(0, 4),
+        reasons: (pick.reasons ?? [])
+          .filter((reason) => typeof reason === "string")
+          .map((reason) => reason.slice(0, 140))
+          .slice(0, 4),
         potentialReward: pick.potential_reward?.slice(0, 120) ?? null,
       });
     }
@@ -119,5 +107,3 @@ export async function matchQuestsWithAi(
     return null;
   }
 }
-
-export { TIER_LABELS };

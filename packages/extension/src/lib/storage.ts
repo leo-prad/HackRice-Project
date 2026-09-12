@@ -1,4 +1,4 @@
-const keys = { token: "questlineToken", collapsed: "questlineCollapsed" } as const;
+const keys = { token: "gitventureToken", collapsed: "gitventureCollapsed" } as const;
 
 export const storage = {
   async token() { return (await chrome.storage.local.get(keys.token))[keys.token] as string | undefined; },

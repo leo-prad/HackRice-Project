@@ -3,23 +3,10 @@ export const SCORING_VERSION = 2;
 
 export const MAX_QUEST_XP = 1000;
 
-export type Rarity = "common" | "rare" | "epic" | "legendary" | "mythic";
+/** Quests at or above this XP unlock the high-stakes achievement. */
+export const HIGH_XP_THRESHOLD = 850;
 
-export const RARITY_TIERS: ReadonlyArray<{ rarity: Rarity; minXp: number; label: string }> = [
-  { rarity: "common", minXp: 0, label: "COMMON" },
-  { rarity: "rare", minXp: 250, label: "RARE" },
-  { rarity: "epic", minXp: 450, label: "EPIC" },
-  { rarity: "legendary", minXp: 650, label: "LEGENDARY" },
-  { rarity: "mythic", minXp: 850, label: "BOSS" },
-];
-
-export const rarityForXp = (xp: number): Rarity =>
-  [...RARITY_TIERS].reverse().find((tier) => xp >= tier.minXp)?.rarity ?? "common";
-
-export const rarityLabel = (rarity: Rarity): string =>
-  RARITY_TIERS.find((tier) => tier.rarity === rarity)?.label ?? "COMMON";
-
-export const isBossRarity = (rarity: Rarity) => rarity === "mythic";
+export const isHighXpQuest = (xp: number) => xp >= HIGH_XP_THRESHOLD;
 
 /** The five 0-10 axes the LLM scores. It never returns XP. */
 export interface QuestAnalysis {
@@ -155,7 +142,6 @@ export interface IssueScore {
   title: string;
   xp: number;
   difficulty: number;
-  rarity: Rarity;
   scoringVersion: number;
   daysOpen: number;
   scoredAt: string;
@@ -228,7 +214,7 @@ export interface UserAchievement {
 
 export interface PlayerStats {
   questsCompleted: number;
-  bossesDefeated: number;
+  highXpQuests: number;
   activeQuests: number;
   globalRank: number | null;
 }
@@ -249,7 +235,6 @@ export interface UserProfile {
 export interface QuestCompletion {
   questKey: string;
   questTitle: string;
-  rarity: Rarity;
   xpAwarded: number;
   totalXp: number;
   levelBefore: number;
@@ -262,11 +247,7 @@ export interface QuestCompletion {
   rankAfter: number | null;
 }
 
-export type RecommendationTier = "safe" | "levelup" | "boss";
-
 export interface QuestRecommendation {
-  tier: RecommendationTier;
-  tierLabel: string;
   quest: IssueScore;
   reasons: string[];
   potentialReward: string | null;
@@ -370,40 +351,103 @@ export const GOAL_SKILL_HINTS: Record<string, string[]> = {
   DevOps: ["docker", "kubernetes", "ci", "cd", "devops", "build", "tooling"],
 };
 
-/** Instant client-side preview so interest toggles reflect immediately before Gemini runs. */
+/** Instant client-side preview so interest toggles reflect immediately before Gemini runs.
+ * Levels are derived only from the player's live language histogram (+ goal hints when no lang match). */
 export function previewSkillsFromSignals(
   goals: string[],
   languages: Array<{ name: string; count: number }>,
-): Array<{ name: string; level: number; origin: "github" | "goal" }> {
-  const skills: Array<{ name: string; level: number; origin: "github" | "goal" }> = [];
-  for (const [index, language] of languages.slice(0, 4).entries()) {
+): Array<{ name: string; level: number; origin: "github" | "goal"; evidenceCount: number }> {
+  const skills: Array<{ name: string; level: number; origin: "github" | "goal"; evidenceCount: number }> = [];
+  const maxCount = Math.max(1, ...languages.map((entry) => entry.count));
+
+  for (const language of languages.slice(0, 5)) {
+    // Scale level 2–6 by share of the player's strongest language signal — never hardcoded XP.
+    const share = language.count / maxCount;
+    const level = Math.min(6, Math.max(2, Math.round(1 + share * 5)));
     skills.push({
       name: language.name,
-      level: Math.min(6, Math.max(2, language.count + 1 - Math.floor(index / 2))),
+      level,
       origin: "github",
+      evidenceCount: language.count,
     });
   }
+
   for (const goal of goals) {
     const hint = (GOAL_SKILL_HINTS[goal] ?? [goal.toLowerCase()])[0];
     const name = hint.charAt(0).toUpperCase() + hint.slice(1);
     if (!skills.some((skill) => skill.name.toLowerCase() === name.toLowerCase())) {
-      skills.push({ name, level: 2, origin: "goal" });
+      skills.push({ name, level: 2, origin: "goal", evidenceCount: 0 });
     }
   }
-  if (!skills.length) skills.push({ name: "Debugging", level: 2, origin: "goal" });
+
   return skills.slice(0, 8);
 }
 
-/** Which selected goals already have matching language evidence on GitHub. */
+export type GithubEvidenceInput = {
+  languages: Array<{ name: string; count: number }>;
+  repos?: Array<{
+    language: string | null;
+    topics?: string[];
+    description?: string | null;
+    fullName?: string;
+  }>;
+};
+
+/** Which selected goals already have matching language / topic / description evidence on GitHub. */
 export function goalsWithGithubEvidence(
   goals: string[],
-  languages: Array<{ name: string; count: number }>,
+  languagesOrInput: Array<{ name: string; count: number }> | GithubEvidenceInput,
 ): string[] {
-  const haystack = languages.map((entry) => entry.name.toLowerCase());
+  const input: GithubEvidenceInput = Array.isArray(languagesOrInput)
+    ? { languages: languagesOrInput }
+    : languagesOrInput;
+
+  const tokens = new Set<string>();
+  for (const language of input.languages) tokens.add(language.name.toLowerCase());
+  for (const repo of input.repos ?? []) {
+    if (repo.language) tokens.add(repo.language.toLowerCase());
+    for (const topic of repo.topics ?? []) tokens.add(topic.toLowerCase());
+    if (repo.description) {
+      for (const word of repo.description.toLowerCase().split(/[^a-z0-9+#]+/)) {
+        if (word.length > 2) tokens.add(word);
+      }
+    }
+  }
+
   return goals.filter((goal) => {
     const hints = GOAL_SKILL_HINTS[goal] ?? [goal.toLowerCase()];
-    return hints.some((hint) => haystack.some((lang) => lang.includes(hint) || hint.includes(lang)));
+    return hints.some((hint) =>
+      [...tokens].some((token) => token.includes(hint) || hint.includes(token)),
+    );
   });
+}
+
+/** 0–1 match strength for a goal against live GitHub signals (for meters / rings). */
+export function goalEvidenceStrength(
+  goal: string,
+  input: GithubEvidenceInput,
+): number {
+  const hints = GOAL_SKILL_HINTS[goal] ?? [goal.toLowerCase()];
+  let score = 0;
+  let weight = 0;
+
+  for (const language of input.languages) {
+    weight += language.count;
+    if (hints.some((hint) => language.name.toLowerCase().includes(hint) || hint.includes(language.name.toLowerCase()))) {
+      score += language.count;
+    }
+  }
+
+  for (const repo of input.repos ?? []) {
+    weight += 1;
+    const blob = [repo.language, ...(repo.topics ?? []), repo.description ?? ""]
+      .join(" ")
+      .toLowerCase();
+    if (hints.some((hint) => blob.includes(hint))) score += 1;
+  }
+
+  if (weight <= 0) return 0;
+  return Math.min(1, score / weight);
 }
 
 export type AchievementCode = "first_blood" | "open_source_hero" | "boss_slayer" | "polyglot" | "speedrunner";
@@ -417,7 +461,7 @@ export interface AchievementDef {
 export const ACHIEVEMENTS: ReadonlyArray<AchievementDef> = [
   { code: "first_blood", name: "First Blood", description: "Complete your first quest." },
   { code: "open_source_hero", name: "Open Source Hero", description: "Complete 10 quests." },
-  { code: "boss_slayer", name: "Boss Slayer", description: "Defeat a Boss quest." },
+  { code: "boss_slayer", name: "High Stakes", description: `Complete a quest worth ${HIGH_XP_THRESHOLD}+ XP.` },
   { code: "polyglot", name: "Polyglot", description: "Complete quests across 3 different languages." },
   { code: "speedrunner", name: "Speedrunner", description: "Complete a quest within a day of claiming it." },
 ];

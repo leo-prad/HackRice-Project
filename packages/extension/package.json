@@ -1,5 +1,5 @@
 {
-  "name": "@questline/extension",
+  "name": "@gitventure/extension",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@questline/shared": "*"
+    "@gitventure/shared": "*"
   },
   "devDependencies": {
     "@types/chrome": "^0.2.9",

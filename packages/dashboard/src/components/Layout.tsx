@@ -1,45 +1,109 @@
 import { Github, LogOut } from "lucide-react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { session } from "../lib/api";
+import { GitVentureWordmark } from "./brand/GitVentureMark";
+import PageTransition from "./motion/PageTransition";
 
 export default function Layout() {
   const signedIn = Boolean(session.get());
+  const { pathname } = useLocation();
+  const isLanding = pathname === "/";
+  const isNewcomerChrome =
+    pathname === "/ingest" || pathname === "/onboard" || pathname === "/auth/continue";
+
+  // Landing owns its chrome (hide-on-scroll nav + Lenis).
+  if (isLanding) {
+    return (
+      <div className="relative min-h-screen">
+        <main>
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
+
+  // Newcomer layer — no app nav (avoids leaking returning-player destinations).
+  if (isNewcomerChrome) {
+    return (
+      <div className="relative min-h-screen bg-void font-body text-snow">
+        <main>
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-white/[.07] bg-ink/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
-          <Link to="/" className="flex items-center gap-3 font-black tracking-tight">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-acid text-lg text-ink">Q</span>
-            QUESTLINE
-            <span className="hidden rounded-full border border-acid/20 bg-acid/5 px-2 py-1 font-mono text-[9px] text-acid sm:inline">BETA</span>
+    <div className="relative min-h-screen bg-void font-body text-snow">
+      <header className="sticky top-0 z-30 border-b border-white/[0.07] bg-void/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
+          <Link to={signedIn ? "/auth/continue" : "/"} className="flex items-center" aria-label="GitVenture home">
+            <GitVentureWordmark />
           </Link>
-          <nav className="flex items-center gap-1 text-sm text-slate-400">
+          <nav className="flex items-center gap-1 text-sm text-fog">
             {signedIn && (
-              <NavLink to="/next" className={({ isActive }) => `rounded-lg px-3 py-2 hover:text-white ${isActive ? "bg-white/[.06] text-white" : ""}`}>
+              <NavLink
+                to="/next"
+                className={({ isActive }) =>
+                  `rounded-full px-3.5 py-2 font-body transition-colors duration-300 hover:text-snow ${
+                    isActive ? "bg-white/[0.06] text-snow" : ""
+                  }`
+                }
+              >
                 Next Quest
               </NavLink>
             )}
-            <NavLink to="/leaderboard" className={({ isActive }) => `rounded-lg px-3 py-2 hover:text-white ${isActive ? "bg-white/[.06] text-white" : ""}`}>
+            <NavLink
+              to="/leaderboard"
+              className={({ isActive }) =>
+                `rounded-full px-3.5 py-2 font-body transition-colors duration-300 hover:text-snow ${
+                  isActive ? "bg-white/[0.06] text-snow" : ""
+                }`
+              }
+            >
               Leaderboard
             </NavLink>
             {signedIn && (
-              <NavLink to="/profile" className={({ isActive }) => `rounded-lg px-3 py-2 hover:text-white ${isActive ? "bg-white/[.06] text-white" : ""}`}>
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  `rounded-full px-3.5 py-2 font-body transition-colors duration-300 hover:text-snow ${
+                    isActive ? "bg-white/[0.06] text-snow" : ""
+                  }`
+                }
+              >
                 Profile
               </NavLink>
             )}
             {signedIn ? (
-              <button className="ml-2 rounded-lg border border-white/10 p-2 hover:border-white/25" title="Sign out" onClick={() => { session.clear(); location.href = "/"; }}>
+              <button
+                className="gv-btn-secondary ml-2 p-2.5"
+                title="Sign out"
+                onClick={() => {
+                  session.clear();
+                  location.href = "/";
+                }}
+              >
                 <LogOut size={16} />
               </button>
             ) : (
-              <a className="ml-2 flex items-center gap-2 rounded-lg bg-white px-3 py-2 font-bold text-ink" href={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8787"}/auth/github`}>
+              <a
+                className="gv-btn-primary ml-2 px-3.5 py-2 text-sm"
+                href={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8787"}/auth/github`}
+              >
                 <Github size={16} /> Sign in
               </a>
             )}
           </nav>
         </div>
       </header>
-      <main><Outlet /></main>
+      <main>
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
+      </main>
     </div>
   );
 }

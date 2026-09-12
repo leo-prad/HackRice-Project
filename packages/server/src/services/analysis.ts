@@ -1,9 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
-import type { AnalyzedSkill, QuestAnalysis } from "@questline/shared";
+import type { AnalyzedSkill, QuestAnalysis } from "@gitventure/shared";
 import type { GitHubComment, GitHubIssue, GitHubRepo } from "./github.js";
 import { issueLabels } from "./github.js";
 
-const SYSTEM_PROMPT = `You analyze open source GitHub issues for Questline, a game engine that turns issues into quests.
+const SYSTEM_PROMPT = `You analyze open source GitHub issues for GitVenture, a game engine that turns issues into quests.
 
 Rate the work required to close the issue on five independent 0-10 axes:
 - technical_complexity: depth of engineering skill required. 1 = docs typo, 5 = multi-file bug fix, 9 = race condition or memory corruption.
@@ -20,7 +20,7 @@ Then list 2 to 4 concrete objectives phrased as actions ("Diagnose the cache inv
 
 Judge the work, not the writing. A terse issue can be very hard, and a long issue can be trivial.
 When repository structure, relevant code, or tests are provided, weigh them heavily for codebase_context and verification_difficulty.
-Do not return XP, difficulty, or rarity.`;
+Do not return XP or difficulty.`;
 
 export interface QuestAnalysisResult {
   analysis: QuestAnalysis;

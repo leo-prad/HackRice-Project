@@ -1,7 +1,9 @@
-import type { Claim, IssueScore, QuestCompletion, UserProfile } from "@questline/shared";
-import { roman } from "@questline/shared";
+import type { Claim, IssueScore, QuestCompletion, UserProfile } from "@gitventure/shared";
+import { roman } from "@gitventure/shared";
 import { api } from "../lib/api";
-import { dashboardPath } from "../lib/config";
+import { bumpClaimsEpoch, onClaimsEpoch } from "../lib/claimSync";
+import { openDashboard } from "../lib/openDashboard";
+import { ROUTES } from "../lib/routes";
 import { storage } from "../lib/storage";
 
 let mounting = false;
@@ -13,7 +15,7 @@ interface SubmitResponse {
 }
 
 export async function mountIssueDetail() {
-  if (mounting || document.querySelector('[data-questline-card="1"]')) return;
+  if (mounting || document.querySelector('[data-gitventure-card="1"]')) return;
   mounting = true;
   try {
     const result = await api<{ scores: IssueScore[] }>("/issues/score", { method: "POST", body: JSON.stringify({ issueUrls: [location.href.split(/[?#]/)[0]] }) });
@@ -25,27 +27,27 @@ export async function mountIssueDetail() {
       const details = await api<{ claim: Claim | null }>(`/issues/${encodeURIComponent(score.issueNodeId)}`);
       claim = details.claim;
       profile = await api<UserProfile>("/users/me");
-      // Opportunistic settle if a PR is already approved/merged.
       if (claim?.status === "submitted") {
         const refreshed = await api<SubmitResponse>(`/claims/${claim.id}/refresh`, { method: "POST" }).catch(() => null);
         if (refreshed) claim = refreshed.claim;
       }
     } catch { /* Signed-out visitors still see the quest. */ }
     renderCard(score, claim, profile);
-  } catch (error) { console.warn("Questline could not mount the quest card", error); }
+  } catch (error) { console.warn("GitVenture could not mount the quest card", error); }
   finally { mounting = false; }
 }
 
 async function renderCard(score: IssueScore, initialClaim: Claim | null, initialProfile: UserProfile | null) {
   const card = document.createElement("aside");
   card.className = "ql-card";
-  card.dataset.questline = "1";
-  card.dataset.questlineRoot = "1";
-  card.dataset.questlineCard = "1";
+  card.dataset.gitventure = "1";
+  card.dataset.gitventureRoot = "1";
+  card.dataset.gitventureCard = "1";
   if (await storage.collapsed()) card.classList.add("ql-collapsed");
 
   let claim = initialClaim;
   let profile = initialProfile;
+  let stopEpoch: (() => void) | null = null;
 
   const draw = () => {
     const progress = profile ? Math.min(100, (profile.xpIntoLevel / Math.max(1, profile.xpForNextLevel)) * 100) : 0;
@@ -57,10 +59,12 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, initial
       : claim.status === "submitted" ? "AWAITING APPROVAL"
       : claim.status === "merged" ? "XP EARNED"
       : "QUEST BOUNTY";
+    const canUnclaim = claim?.status === "claimed" || claim?.status === "submitted";
 
     card.innerHTML = `
-      <button class="ql-collapse" aria-label="Collapse Questline">⌄</button>
-      <div class="ql-orb"><span>Q</span><b>${bigValue >= 1000 ? `${(bigValue / 1000).toFixed(bigValue % 1000 === 0 ? 0 : 1)}k` : bigValue}</b></div>
+      <button class="ql-collapse" aria-label="Collapse GitVenture">⌄</button>
+      ${canUnclaim ? '<button class="ql-unclaim" type="button" title="Unclaim quest" aria-label="Unclaim quest">×</button>' : ""}
+      <div class="ql-orb"><span>GV</span><b>${bigValue >= 1000 ? `${(bigValue / 1000).toFixed(bigValue % 1000 === 0 ? 0 : 1)}k` : bigValue}</b></div>
       <div class="ql-card-body">
         <div class="ql-kicker"><i></i>${kicker}</div>
         <h3 class="ql-title">${escapeHtml(score.title)}</h3>
@@ -70,11 +74,15 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, initial
         ${objectivesMarkup(score)}
         <div class="ql-action">${actionMarkup(claim)}</div>
         <p class="ql-error" hidden></p>
-        <div class="ql-footer">${footerMarkup(profile, progress)}</div>
+        <div className="ql-footer">${footerMarkup(profile, progress)}</div>
       </div>`;
     card.querySelector(".ql-collapse")?.addEventListener("click", async () => {
       card.classList.toggle("ql-collapsed");
       await storage.setCollapsed(card.classList.contains("ql-collapsed"));
+    });
+    card.querySelector(".ql-unclaim")?.addEventListener("click", () => void abandon());
+    card.querySelector(".ql-footer-link")?.addEventListener("click", () => {
+      openDashboard(profile ? ROUTES.profile : ROUTES.pair);
     });
     wireAction();
   };
@@ -83,10 +91,42 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, initial
     try { profile = await api<UserProfile>("/users/me"); } catch { /* Keep the previous profile. */ }
   };
 
+  const refreshClaim = async () => {
+    try {
+      const details = await api<{ claim: Claim | null }>(`/issues/${encodeURIComponent(score.issueNodeId)}`);
+      claim = details.claim;
+      await refreshProfile();
+      draw();
+    } catch { /* keep previous */ }
+  };
+
+  const abandon = async () => {
+    if (!claim || (claim.status !== "claimed" && claim.status !== "submitted")) return;
+    const previous = claim;
+    claim = { ...claim, status: "abandoned" };
+    draw();
+    try {
+      await api(`/claims/${previous.id}/abandon`, { method: "POST" });
+      await bumpClaimsEpoch(previous.id);
+      claim = null;
+      await refreshProfile();
+      draw();
+    } catch (reason) {
+      claim = previous;
+      draw();
+      const error = card.querySelector<HTMLElement>(".ql-error");
+      if (error) {
+        error.hidden = false;
+        error.textContent = reason instanceof Error ? reason.message : "Could not unclaim";
+      }
+    }
+  };
+
   const settle = async (response: SubmitResponse) => {
     claim = response.claim;
     if (response.completion) await playQuestComplete(response.completion, score);
     await refreshProfile();
+    await bumpClaimsEpoch(response.claim.id);
     draw();
     if (!response.completion && response.pending) note(response.pending);
   };
@@ -112,11 +152,12 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, initial
     const button = card.querySelector<HTMLButtonElement>(".ql-primary");
     if (!button || button.disabled) return;
     button.addEventListener("click", async () => {
-      if (!profile) { window.open(dashboardPath("/pair"), "_blank"); return; }
+      if (!profile) { openDashboard(ROUTES.pair); return; }
 
       if (!claim || claim.status === "abandoned" || claim.status === "closed") {
         await run(button, async () => {
           claim = (await api<{ claim: Claim }>("/claims", { method: "POST", body: JSON.stringify({ issueNodeId: score.issueNodeId }) })).claim;
+          await bumpClaimsEpoch(claim.id);
           draw();
         });
         return;
@@ -151,6 +192,14 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, initial
 
   document.body.append(card);
   draw();
+  stopEpoch = onClaimsEpoch(() => void refreshClaim());
+  const observer = new MutationObserver(() => {
+    if (!document.body.contains(card)) {
+      stopEpoch?.();
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true });
 }
 
 function skillsMarkup(score: IssueScore) {
@@ -184,14 +233,16 @@ function actionMarkup(claim: Claim | null) {
 }
 
 function footerMarkup(profile: UserProfile | null, progress: number) {
-  if (!profile) return "<span>Pair the extension to claim this quest</span>";
-  return `<div><span>LEVEL ${profile.level}</span><strong>${profile.user.totalXp.toLocaleString()} XP</strong></div><div class="ql-progress"><i style="width:${progress}%"></i></div>`;
+  if (!profile) {
+    return '<button class="ql-footer-link" type="button">Pair the extension to claim this quest</button>';
+  }
+  return `<button class="ql-footer-link" type="button"><div><span>LEVEL ${profile.level}</span><strong>${profile.user.totalXp.toLocaleString()} XP</strong></div><div class="ql-progress"><i style="width:${progress}%"></i></div></button>`;
 }
 
 async function playQuestComplete(completion: QuestCompletion, _score: IssueScore) {
   const overlay = document.createElement("div");
   overlay.className = "ql-gain";
-  overlay.dataset.questlineRoot = "1";
+  overlay.dataset.gitventureRoot = "1";
   overlay.innerHTML = `
     <div class="ql-particles"></div>
     <div class="ql-gain-label">QUEST COMPLETE</div>
@@ -251,7 +302,7 @@ async function playQuestComplete(completion: QuestCompletion, _score: IssueScore
 
   const next = overlay.querySelector<HTMLButtonElement>(".ql-gain-next")!;
   next.hidden = false;
-  next.addEventListener("click", () => window.open(dashboardPath("/next"), "_blank"));
+  next.addEventListener("click", () => openDashboard(ROUTES.home));
 
   await new Promise<void>((resolve) => {
     const dismiss = () => resolve();

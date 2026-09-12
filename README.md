@@ -1,16 +1,16 @@
-# Questline
+# GitVenture
 
-Questline is an AI game engine for open source. It turns live GitHub issues into RPG-style quests: structured difficulty, canonical XP, a skill tree, and a next-quest curriculum. Tutorials teach syntax. LeetCode teaches algorithms. Questline helps developers learn how to work on real software.
+GitVenture is an AI game engine for open source. It turns live GitHub issues into RPG-style quests: structured difficulty, canonical XP, and a skill tree, and a next-quest curriculum. Tutorials teach syntax. LeetCode teaches algorithms. GitVenture helps developers learn how to work on real software.
 
 **Level up by solving real software problems.**
 
 ## What is included
 
-- Chrome Manifest V3 extension that turns GitHub issue lists into a rarity-graded Quest Board
+- Chrome Manifest V3 extension that turns GitHub issue lists into a XP-rated Quest Board
 - Issue Quest Card with skills, objectives, claim, and merge-verified completion
 - Full-screen Quest Complete animation: XP, level-up, skill-up, achievements, rank
 - Express API with GitHub OAuth, JWT pairing, Gemini structured analysis, and PostgreSQL
-- Deterministic difficulty and XP (`difficulty × 100`, rarity tiers, `scoring_version`)
+- Deterministic difficulty and XP (`difficulty × 100`, `scoring_version`)
 - Maintainer verification via GitHub API — XP unlocks only when a PR is approved or merged
 - Skill tree, 5 achievements, global leaderboard, and Find My Next Quest
 - Dashboard onboarding: pick a growth goal, then land on three recommended issues
@@ -18,7 +18,7 @@ Questline is an AI game engine for open source. It turns live GitHub issues into
 ## Repo layout
 
 ```text
-HackRice-Project/
+GitVenture/
 ├── .env.example          # Template only — copy to .env at repo root
 ├── .env                  # Local secrets (gitignored) — single source of truth
 ├── packages/
@@ -68,7 +68,7 @@ Requirements: Node 20+, a shared Tiger Cloud database, a GitHub OAuth app, and a
 4. Build the shared package, warm a demo Quest Board, then start the API and dashboard.
 
    ```powershell
-   npm run build -w @questline/shared
+   npm run build -w @gitventure/shared
    npm run seed
    npm run dev
    ```
@@ -76,7 +76,7 @@ Requirements: Node 20+, a shared Tiger Cloud database, a GitHub OAuth app, and a
 5. Build the extension.
 
    ```powershell
-   npm run build -w @questline/extension
+   npm run build -w @gitventure/extension
    ```
 
 6. Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `packages/extension/dist`.
@@ -121,7 +121,7 @@ Create one OAuth App at [GitHub Developer Settings → OAuth Apps](https://githu
 
 - Homepage URL: `http://127.0.0.1:5174`
 - Authorization callback URL: `http://localhost:8787/auth/github/callback`
-- Scopes requested by Questline: `read:user`, `repo` (required for private repository issues)
+- Scopes requested by GitVenture: `read:user`, `repo` (required for private repository issues)
 
 After signing in, open `/pair`, copy the one-time code, and paste it into the extension popup.
 

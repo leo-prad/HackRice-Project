@@ -27,7 +27,7 @@ async function seed() {
     );
   }
 
-  console.log(`Warming Questline scores for ${repos.join(", ")}`);
+  console.log(`Warming GitVenture scores for ${repos.join(", ")}`);
   for (const fullName of repos) {
     const [owner, repo] = fullName.split("/");
     if (!owner || !repo) continue;
@@ -41,7 +41,7 @@ async function seed() {
     console.log(`Found ${unique.length} open issues in ${fullName}`);
     const scores = await scoreIssues(unique, token, 3);
     for (const quest of scores.sort((a, b) => b.xp - a.xp)) {
-      console.log(`${quest.rarity.padEnd(10)} ${String(quest.xp).padStart(4)} XP  ${quest.difficulty.toFixed(2)}  ${quest.questKey}  ${quest.title}`);
+      console.log(`${String(quest.xp).padStart(4)} XP  difficulty ${quest.difficulty.toFixed(2)}  ${quest.questKey}  ${quest.title}`);
     }
   }
 }

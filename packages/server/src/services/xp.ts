@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg";
-import type { QuestCompletion, Rarity, UserAchievement } from "@questline/shared";
-import { achievementDef, isBossRarity, isLanguageSkill, levelProgress, skillLevel } from "@questline/shared";
+import type { QuestCompletion, UserAchievement } from "@gitventure/shared";
+import { achievementDef, isHighXpQuest, isLanguageSkill, levelProgress, skillLevel } from "@gitventure/shared";
 import { withTransaction } from "../db.js";
 
 const SPEEDRUN_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -9,7 +9,7 @@ interface LockedClaim {
   id: number; user_id: number; issue_node_id: string; status: string;
   pr_repo: string | null; pr_number: number | null; claimed_at: Date;
   completion_json: QuestCompletion | null;
-  xp: number; rarity: Rarity; title: string; quest_key: string; repo_owner_id: string; risk_multiplier: number;
+  xp: number; title: string; quest_key: string; repo_owner_id: string; risk_multiplier: number;
   github_id: string; total_xp: number; created_at: Date;
 }
 
@@ -25,7 +25,7 @@ async function unlockAchievements(client: PoolClient, claim: LockedClaim, quests
   const earned: string[] = [];
   if (questsCompleted >= 1) earned.push("first_blood");
   if (questsCompleted >= 10) earned.push("open_source_hero");
-  if (isBossRarity(claim.rarity)) earned.push("boss_slayer");
+  if (isHighXpQuest(claim.xp)) earned.push("boss_slayer");
   if (Date.now() - claim.claimed_at.getTime() <= SPEEDRUN_WINDOW_MS) earned.push("speedrunner");
 
   const languages = await client.query<{ skill_name: string }>(
@@ -60,7 +60,7 @@ export async function completeClaim(claimId: number, note: string): Promise<Ques
   return withTransaction(async (client) => {
     const locked = await client.query<LockedClaim>(
       `SELECT c.id, c.user_id, c.issue_node_id, c.status, c.pr_repo, c.pr_number, c.claimed_at, c.completion_json,
-              s.xp, s.rarity, s.title, s.quest_key, s.repo_owner_id, c.risk_multiplier,
+              s.xp, s.title, s.quest_key, s.repo_owner_id, c.risk_multiplier,
               u.github_id, u.total_xp, u.created_at
        FROM claims c
        JOIN issue_scores s ON s.issue_node_id = c.issue_node_id
@@ -131,7 +131,6 @@ export async function completeClaim(claimId: number, note: string): Promise<Ques
     const completion: QuestCompletion = {
       questKey: claim.quest_key,
       questTitle: claim.title,
-      rarity: claim.rarity,
       xpAwarded: award,
       totalXp,
       levelBefore: before.level,

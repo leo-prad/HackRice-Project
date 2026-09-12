@@ -4,19 +4,19 @@ import type {
   PlayerProfileSeed,
   ProfileBuildResult,
   ProfilePipelineStep,
-} from "@questline/shared";
-import { GOAL_SKILL_HINTS, skillLevelThreshold } from "@questline/shared";
+} from "@gitventure/shared";
+import { GOAL_SKILL_HINTS, skillLevelThreshold } from "@gitventure/shared";
 import { query, withTransaction } from "../db.js";
 import { getViewerExperience, type GitHubExperience } from "./github.js";
 import { normalizeSkillName } from "./analysis.js";
 
-const SYSTEM_PROMPT = `You build a Questline developer character sheet from a player's GitHub history and growth goals.
+const SYSTEM_PROMPT = `You build a GitVenture developer character sheet from a player's GitHub history and growth goals.
 
 Return skills a contributor already shows evidence for, biased toward their stated goals.
 Use short canonical skill names ("Python", "TypeScript", "React", "APIs", "SQL", "Testing", "Concurrency", "DevOps", "Documentation").
 Levels are 1-8. Be conservative: one repo in a language is level 2-3, many recent projects and stars push higher, never invent expert levels without evidence.
 Prefer 4-8 skills. Include at least one skill that advances each selected goal when evidence exists.
-Do not return XP, rarity, or quest recommendations.`;
+Do not return XP or quest recommendations.`;
 
 const RESPONSE_SCHEMA = {
   type: "object",

@@ -1,14 +1,14 @@
 {
-  "name": "questline",
+  "name": "gitventure",
   "private": true,
   "version": "0.1.0",
   "workspaces": ["packages/*"],
   "scripts": {
-    "dev": "concurrently -n server,dashboard -c magenta,cyan \"npm run dev -w @questline/server\" \"npm run dev -w @questline/dashboard\"",
-    "build": "npm run build -w @questline/shared && npm run build -w @questline/server && npm run build -w @questline/dashboard && npm run build -w @questline/extension",
+    "dev": "concurrently -n server,dashboard -c magenta,cyan \"npm run dev -w @gitventure/server\" \"npm run dev -w @gitventure/dashboard\"",
+    "build": "npm run build -w @gitventure/shared && npm run build -w @gitventure/server && npm run build -w @gitventure/dashboard && npm run build -w @gitventure/extension",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "migrate": "npm run migrate -w @questline/server",
-    "seed": "npm run seed -w @questline/server"
+    "migrate": "npm run migrate -w @gitventure/server",
+    "seed": "npm run seed -w @gitventure/server"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

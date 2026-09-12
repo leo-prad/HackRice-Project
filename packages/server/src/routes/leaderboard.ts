@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { levelProgress } from "@questline/shared";
+import { levelProgress } from "@gitventure/shared";
 import { query } from "../db.js";
 
 export const leaderboardRouter = Router();

@@ -2,14 +2,14 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8787";
 
 export const popupStorage = {
   async token() {
-    const result = await chrome.storage.local.get("questlineToken");
-    return result.questlineToken as string | undefined;
+    const result = await chrome.storage.local.get("gitventureToken");
+    return result.gitventureToken as string | undefined;
   },
   async setToken(token: string) {
-    await chrome.storage.local.set({ questlineToken: token });
+    await chrome.storage.local.set({ gitventureToken: token });
   },
   async clearToken() {
-    await chrome.storage.local.remove("questlineToken");
+    await chrome.storage.local.remove("gitventureToken");
   },
 };
 

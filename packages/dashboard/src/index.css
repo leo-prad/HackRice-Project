@@ -1,28 +1,192 @@
-@tailwind base;@tailwind components;@tailwind utilities;
-:root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#07090e;color:#f2f5f8}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-width:320px;min-height:100vh;background:radial-gradient(circle at 75% -10%,rgba(167,139,250,.11),transparent 28%),radial-gradient(circle at 10% 25%,rgba(185,244,86,.05),transparent 25%),#07090e}body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.26;background-image:linear-gradient(#ffffff06 1px,transparent 1px),linear-gradient(90deg,#ffffff06 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,#000,transparent 80%)}::selection{background:#b9f456;color:#07090e}.text-glow{text-shadow:0 0 28px rgba(185,244,86,.28)}.fade-up{animation:fade-up .55s ease-out both}@keyframes fade-up{from{opacity:0;transform:translateY(14px)}}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@keyframes push-in-left {
-  from { opacity: 0; transform: translateX(-40px); }
-  to { opacity: 1; transform: translateX(0); }
+:root {
+  color-scheme: dark;
+  --void: #06080d;
+  --panel: #0e121a;
+  --snow: #e8edf2;
+  --fog: #9aa3b2;
+  --mist: #6b7382;
+  --trail: #ff6b35;
+  --beacon: #3dffa8;
 }
 
-@keyframes push-in-right {
-  from { opacity: 0; transform: translateX(40px); }
-  to { opacity: 1; transform: translateX(0); }
+* {
+  box-sizing: border-box;
 }
 
-@keyframes push-in-up {
-  from { opacity: 0; transform: translateY(30px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+html {
+  scroll-behavior: smooth;
 }
 
-@keyframes float-subtle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+html.lenis,
+html.lenis body {
+  height: auto;
 }
 
-.animate-push-left { animation: push-in-left 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.animate-push-right { animation: push-in-right 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.animate-push-up { animation: push-in-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.animate-float { animation: float-subtle 4.5s ease-in-out infinite; }
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
 
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: Manrope, system-ui, sans-serif;
+  background: #06080d;
+  color: #e8edf2;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: #ff6b35;
+  color: #06080d;
+}
+
+.text-glow {
+  text-shadow: 0 0 28px rgba(255, 107, 53, 0.28);
+}
+
+.fade-up {
+  animation: fade-up 0.55s ease-out both;
+}
+
+/* Shared dashboard card language (landing-aligned) */
+.gv-card {
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(14, 18, 26, 0.9);
+  box-shadow: 0 12px 40px -24px rgba(0, 0, 0, 0.55);
+}
+
+.gv-card-hover {
+  transition: border-color 0.3s ease, background-color 0.3s ease, transform 0.3s ease;
+}
+
+.gv-card-hover:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Platform button system — text contrast stays locked on hover */
+.gv-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: #e8edf2;
+  color: #06080d;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.15s ease, box-shadow 0.3s ease;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 8px 24px -8px rgba(0, 0, 0, 0.5);
+}
+
+.gv-btn-primary:hover {
+  background: #ffffff;
+  color: #06080d;
+}
+
+.gv-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.gv-btn-primary:focus-visible {
+  outline: 2px solid #3dffa8;
+  outline-offset: 3px;
+}
+
+.gv-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e8edf2;
+  font-weight: 500;
+  transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease, transform 0.15s ease;
+}
+
+.gv-btn-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.09);
+  /* Keep inherited / utility text color so labels stay readable */
+}
+
+.gv-btn-secondary:active {
+  transform: scale(0.98);
+}
+
+.gv-btn-secondary:focus-visible {
+  outline: 2px solid #ff6b35;
+  outline-offset: 3px;
+}
+
+/* High-contrast progress — dark track + solid trail fill (readable on void) */
+.gv-progress {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  border-radius: 9999px;
+  background: #151b26;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.gv-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 9999px;
+  background: #ff6b35;
+  box-shadow: 0 0 12px rgba(255, 107, 53, 0.35);
+  min-width: 0;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Soft route + phase transitions */
+@keyframes gv-blur-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.gv-phase-enter {
+  animation: gv-blur-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .fade-up {
+    animation: none;
+  }
+}

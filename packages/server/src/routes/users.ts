@@ -1,6 +1,6 @@
 import { Router } from "express";
-import type { PlayerStats, UserAchievement, UserProfile, UserSkill } from "@questline/shared";
-import { GROWTH_GOALS, achievementDef, levelProgress, skillCategory, skillLevel } from "@questline/shared";
+import type { PlayerStats, UserAchievement, UserProfile, UserSkill } from "@gitventure/shared";
+import { GROWTH_GOALS, HIGH_XP_THRESHOLD, achievementDef, levelProgress, skillCategory, skillLevel } from "@gitventure/shared";
 import { requireAuth } from "../auth/jwt.js";
 import { query } from "../db.js";
 import { claimsForUser } from "../services/claims.js";
@@ -42,7 +42,7 @@ async function loadProfile(userId: number): Promise<UserProfile | null> {
   const completed = claims.filter((claim) => claim.status === "merged");
   const stats: PlayerStats = {
     questsCompleted: completed.length,
-    bossesDefeated: completed.filter((claim) => claim.score?.rarity === "mythic").length,
+    highXpQuests: completed.filter((claim) => (claim.score?.xp ?? 0) >= HIGH_XP_THRESHOLD).length,
     activeQuests: claims.filter((claim) => claim.status === "claimed" || claim.status === "submitted").length,
     globalRank: Number(rank.rows[0].rank),
   };
@@ -74,7 +74,7 @@ async function loadProfile(userId: number): Promise<UserProfile | null> {
       createdAt: row.created_at.toISOString(),
     },
     ...levelProgress(row.total_xp),
-    claims,
+    claims: claims.filter((claim) => claim.status !== "abandoned"),
     recentEvents: events.rows.map((event) => ({
       id: event.id,
       delta: event.delta,

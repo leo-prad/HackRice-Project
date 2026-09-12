@@ -1,4 +1,4 @@
-import type { Claim, QuestCompletion } from "@questline/shared";
+import type { Claim, QuestCompletion } from "@gitventure/shared";
 import { query } from "../db.js";
 import { toClaim, type ClaimRow } from "./claims.js";
 import { getQuest } from "./scoring.js";
