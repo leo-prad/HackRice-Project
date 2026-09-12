@@ -127,7 +127,7 @@ export default function NextQuest() {
         <div className="mt-16 rounded-3xl border border-white/10 bg-panel px-8 py-16 text-center">
           <Swords className="mx-auto text-acid" />
           <h2 className="mt-4 text-2xl font-black">No open quests in range yet</h2>
-          <p className="mt-2 text-slate-500">Open a GitHub issue list with the extension, or refresh after the demo seed.</p>
+          <p className="mt-2 text-slate-500">Open GitPathDemo issues with the extension, or refresh after `npm run seed`.</p>
           <Link to="/profile" className="mt-6 inline-block text-sm text-acid">Back to profile</Link>
         </div>
       )}

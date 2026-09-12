@@ -132,7 +132,7 @@ export default function Login() {
           <Stat label="Scoring engine" value="Gemini 3.8 Flash" hint="Deterministic difficulty from issue + repo context" accent />
           <Stat label="XP proof model" value="0% self-reported" hint="Only cryptographically verified merges pay out" />
           <Stat label="XP formula" value="Difficulty × 100" hint="One fixed curve, no hidden multipliers" />
-          <Stat label="Supported repos" value="Any public repo" hint="Express, FastAPI, Prisma, and anything on GitHub" />
+          <Stat label="Supported repos" value="GitPathDemo" hint="All quests from tejaspalukuri/GitPathDemo" />
         </div>
       </section>
 
@@ -173,7 +173,7 @@ export default function Login() {
               <span className="h-3 w-3 rounded-full bg-[#fa7970]/80" />
               <span className="h-3 w-3 rounded-full bg-[#faa356]/80" />
               <span className="h-3 w-3 rounded-full bg-[#7ce38b]/80" />
-              <span className="ml-2 font-mono text-xs text-slate-400">github.com/expressjs/express/issues</span>
+              <span className="ml-2 font-mono text-xs text-slate-400">github.com/tejaspalukuri/GitPathDemo/issues</span>
             </div>
             {activeTab === "gitquest" && (
               <span className="flex items-center gap-1.5 rounded-full border border-acid/30 bg-acid/10 px-3 py-0.5 font-mono text-[10px] font-bold text-acid">
@@ -185,39 +185,39 @@ export default function Login() {
           <div className="divide-y divide-white/[.06]">
             <IssueRow
               tab={activeTab}
-              title="Fix race condition in router middleware dispatcher"
-              number="#5921"
-              opened="opened 2 days ago by"
-              author="octocat"
+              title="[Bug] Rankings parser drops tied ranks and crashes on empty rows"
+              number="#5"
+              opened="opened recently by"
+              author="tejaspalukuri"
               xp="+780 XP"
               xpTone="acid"
-              tags={["Node.js IV", "Concurrency III", "Difficulty: 7.8 / 10"]}
-              labels={["bug", "help wanted"]}
+              tags={["Python III", "Parsing III", "Difficulty: 7.8 / 10"]}
+              labels={["bug"]}
               action="Claim quest"
               primary
             />
             <IssueRow
               tab={activeTab}
-              title="Typo in error handler response status documentation"
-              number="#5928"
-              opened="opened 4 hours ago by"
-              author="junior-dev"
+              title="[Documentation] Fix hardcoded CI runner path in README.md"
+              number="#7"
+              opened="opened recently by"
+              author="tejaspalukuri"
               xp="+120 XP"
               xpTone="slate"
               tags={["Markdown I", "Difficulty: 1.2 / 10"]}
-              labels={["documentation"]}
+              labels={["documentation", "good first issue"]}
               action="Inspect card"
             />
             <IssueRow
               tab={activeTab}
-              title="Eliminate memory leak in HTTP/2 multiplexed stream parser"
-              number="#5890"
-              opened="opened 1 week ago by"
-              author="maintainer-prime"
+              title="[Security] Reflected Cross-Site Scripting (XSS) in player search query"
+              number="#2"
+              opened="opened recently by"
+              author="tejaspalukuri"
               xp="+960 XP"
               xpTone="violet"
-              tags={["C++ Addons", "Memory Mgmt IV", "Difficulty: 9.6 / 10"]}
-              labels={["performance", "high priority"]}
+              tags={["Security IV", "Web III", "Difficulty: 9.6 / 10"]}
+              labels={["bug", "security"]}
               action="Claim quest"
               primary
             />

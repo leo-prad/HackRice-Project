@@ -5,7 +5,7 @@ import { requireAuth } from "../auth/jwt.js";
 import { query } from "../db.js";
 import { claimsForUser } from "../services/claims.js";
 import { refreshSubmittedClaimsForUser } from "../services/claimRefresh.js";
-import { buildPlayerProfile } from "../services/profileBuilder.js";
+import { buildPlayerProfile, getOnboardingPipeline } from "../services/profileBuilder.js";
 
 export const usersRouter = Router();
 usersRouter.use(requireAuth);
@@ -116,6 +116,18 @@ usersRouter.get("/me/timeline", async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+/** Onboarding preview: GitHub signals + pipeline stages (no Gemini call). */
+usersRouter.get("/me/github-signals", async (req, res, next) => {
+  try {
+    const goals = await query<{ goal: string }>("SELECT goal FROM user_goals WHERE user_id=$1 ORDER BY id ASC", [req.session!.userId]);
+    const snapshot = await getOnboardingPipeline(
+      req.session!.userId,
+      goals.rows.map((row) => row.goal),
+    );
+    res.json(snapshot);
+  } catch (error) { next(error); }
+});
+
 /** Onboarding: save goals, then import GitHub experience into a Gemini-built skill profile. */
 usersRouter.put("/me/goals", async (req, res, next) => {
   try {
@@ -126,13 +138,25 @@ usersRouter.put("/me/goals", async (req, res, next) => {
     const allowed = goals.filter((goal): goal is string => typeof goal === "string" && (GROWTH_GOALS as readonly string[]).includes(goal));
     if (!allowed.length) return res.status(400).json({ error: "Unrecognized goals" });
 
+    const prior = await query<{ goal: string }>("SELECT goal FROM user_goals WHERE user_id=$1", [req.session!.userId]);
+    const priorSet = new Set(prior.rows.map((row) => row.goal));
+    const goalsChanged =
+      allowed.length !== priorSet.size || allowed.some((goal) => !priorSet.has(goal));
+
     await query("DELETE FROM user_goals WHERE user_id=$1 AND goal <> ALL($2::text[])", [req.session!.userId, allowed]);
     for (const goal of allowed) {
       await query("INSERT INTO user_goals (user_id,goal) VALUES ($1,$2) ON CONFLICT (user_id,goal) DO NOTHING", [req.session!.userId, goal]);
     }
     await query("UPDATE users SET goals_completed_at = now() WHERE id=$1 AND goals_completed_at IS NULL", [req.session!.userId]);
 
-    const character = await buildPlayerProfile(req.session!.userId, allowed);
-    res.json({ goals: allowed, character });
+    const force = req.body?.force === true || goalsChanged;
+    const result = await buildPlayerProfile(req.session!.userId, allowed, { force });
+    res.json({
+      goals: allowed,
+      character: result?.character ?? null,
+      experience: result?.experience ?? null,
+      pipeline: result?.pipeline ?? [],
+      rebuilt: result?.rebuilt ?? false,
+    });
   } catch (error) { next(error); }
 });

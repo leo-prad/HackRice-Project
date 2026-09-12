@@ -107,6 +107,44 @@ export interface PlayerProfileSeed {
   source: "llm" | "heuristic";
 }
 
+/** Compact GitHub signals used by onboarding (client + server). */
+export interface GitHubExperienceSignals {
+  login: string;
+  bio: string | null;
+  publicRepos: number;
+  followers: number;
+  languages: Array<{ name: string; count: number }>;
+  repos: Array<{
+    fullName: string;
+    language: string | null;
+    description: string | null;
+    stars: number;
+    topics: string[];
+  }>;
+}
+
+export type ProfilePipelineStepId =
+  | "oauth"
+  | "repos"
+  | "languages"
+  | "goals"
+  | "analyze"
+  | "seed";
+
+export interface ProfilePipelineStep {
+  id: ProfilePipelineStepId;
+  label: string;
+  detail: string;
+  status: "pending" | "active" | "done" | "skipped";
+}
+
+export interface ProfileBuildResult {
+  character: PlayerProfileSeed;
+  experience: GitHubExperienceSignals;
+  pipeline: ProfilePipelineStep[];
+  rebuilt: boolean;
+}
+
 export interface IssueScore {
   issueNodeId: string;
   issueUrl: string;
@@ -331,6 +369,42 @@ export const GOAL_SKILL_HINTS: Record<string, string[]> = {
   "Machine Learning": ["machine learning", "ml", "pytorch", "tensorflow", "numpy", "pandas", "data"],
   DevOps: ["docker", "kubernetes", "ci", "cd", "devops", "build", "tooling"],
 };
+
+/** Instant client-side preview so interest toggles reflect immediately before Gemini runs. */
+export function previewSkillsFromSignals(
+  goals: string[],
+  languages: Array<{ name: string; count: number }>,
+): Array<{ name: string; level: number; origin: "github" | "goal" }> {
+  const skills: Array<{ name: string; level: number; origin: "github" | "goal" }> = [];
+  for (const [index, language] of languages.slice(0, 4).entries()) {
+    skills.push({
+      name: language.name,
+      level: Math.min(6, Math.max(2, language.count + 1 - Math.floor(index / 2))),
+      origin: "github",
+    });
+  }
+  for (const goal of goals) {
+    const hint = (GOAL_SKILL_HINTS[goal] ?? [goal.toLowerCase()])[0];
+    const name = hint.charAt(0).toUpperCase() + hint.slice(1);
+    if (!skills.some((skill) => skill.name.toLowerCase() === name.toLowerCase())) {
+      skills.push({ name, level: 2, origin: "goal" });
+    }
+  }
+  if (!skills.length) skills.push({ name: "Debugging", level: 2, origin: "goal" });
+  return skills.slice(0, 8);
+}
+
+/** Which selected goals already have matching language evidence on GitHub. */
+export function goalsWithGithubEvidence(
+  goals: string[],
+  languages: Array<{ name: string; count: number }>,
+): string[] {
+  const haystack = languages.map((entry) => entry.name.toLowerCase());
+  return goals.filter((goal) => {
+    const hints = GOAL_SKILL_HINTS[goal] ?? [goal.toLowerCase()];
+    return hints.some((hint) => haystack.some((lang) => lang.includes(hint) || hint.includes(lang)));
+  });
+}
 
 export type AchievementCode = "first_blood" | "open_source_hero" | "boss_slayer" | "polyglot" | "speedrunner";
 

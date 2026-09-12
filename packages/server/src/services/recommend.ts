@@ -6,26 +6,23 @@ import { matchQuestsWithAi, TIER_LABELS } from "./questMatcher.js";
 import { questSkillsFor, scoreIssues, toQuest, type ScoreRow } from "./scoring.js";
 
 /**
- * HackRice demo worlds. Keep this to 3 repos:
- * enough variety for Safe / Level-up / Boss, small enough to seed before the pitch.
+ * Product quest board — all issues come from this repo unless DEMO_REPOS overrides.
  * Override with DEMO_REPOS in `.env` (comma-separated owner/repo).
  */
-export const DEMO_WORLD_DEFAULTS = [
-  "expressjs/express", // Node / Backend / JavaScript
-  "fastapi/fastapi",   // Python / Backend / APIs
-  "prisma/orm",        // TypeScript / Databases (issues live under prisma/orm)
-] as const;
+export const DEMO_WORLD_DEFAULTS = ["tejaspalukuri/GitPathDemo"] as const;
 
-/** Broader goal map used only when DEMO_REPOS is unset (non-demo / production-ish). */
+const DEMO_REPO = DEMO_WORLD_DEFAULTS[0];
+
+/** Goal map stays inside the product demo repo so Next Quest never leaves GitPathDemo. */
 const DEFAULT_REPOS: Record<string, string[]> = {
-  Frontend: ["facebook/react", "vercel/next.js", "tailwindlabs/tailwindcss"],
-  Backend: ["django/django", "fastapi/fastapi", "expressjs/express"],
-  Python: ["python/cpython", "pandas-dev/pandas", "django/django"],
-  TypeScript: ["microsoft/TypeScript", "vercel/next.js", "prisma/orm"],
-  Systems: ["rust-lang/rust", "golang/go", "curl/curl"],
-  Databases: ["prisma/orm", "supabase/supabase", "duckdb/duckdb"],
-  "Machine Learning": ["pytorch/pytorch", "scikit-learn/scikit-learn", "huggingface/transformers"],
-  DevOps: ["kubernetes/kubernetes", "docker/compose", "grafana/grafana"],
+  Frontend: [DEMO_REPO],
+  Backend: [DEMO_REPO],
+  Python: [DEMO_REPO],
+  TypeScript: [DEMO_REPO],
+  Systems: [DEMO_REPO],
+  Databases: [DEMO_REPO],
+  "Machine Learning": [DEMO_REPO],
+  DevOps: [DEMO_REPO],
 };
 
 const parseRepoList = (raw: string | undefined) =>
@@ -151,15 +148,12 @@ async function freshCandidates(player: PlayerContext, viewerToken?: string, extr
   const repos = repoPool(player, extraRepo);
   if (!repos.length) return [];
   try {
+    // All open issues in the allowlisted demo repo(s) — do not require specific labels.
     const repoClause = repos.map((repo) => `repo:${repo}`).join(" OR ");
-    const found = await searchIssues(
-      `(${repoClause}) (label:"good first issue" OR label:"help wanted" OR label:"good-first-issue" OR label:"bug")`,
-      12,
-      viewerToken,
-    );
+    const found = await searchIssues(`(${repoClause}) is:issue is:open`, 20, viewerToken);
     const urls = found
       .filter((item) => !player.excluded.has(item.node_id))
-      .slice(0, 8)
+      .slice(0, 12)
       .map((item) => item.html_url);
     return await scoreIssues(urls, viewerToken, 4);
   } catch (error) {

@@ -56,15 +56,16 @@ export interface GitHubExperience {
 
 /** Signed-in player's recent repos + language histogram for the Gemini profile builder. */
 export async function getViewerExperience(token: string): Promise<GitHubExperience> {
+  // One parallel round-trip: profile + recent non-fork activity. Cap volume for LLM + UI.
   const [viewer, repos] = await Promise.all([
     githubFetch<GitHubViewerProfile>("/user", token),
-    githubFetch<GitHubRepo[]>("/user/repos?sort=pushed&per_page=30&affiliation=owner,collaborator", token),
+    githubFetch<GitHubRepo[]>("/user/repos?sort=pushed&per_page=20&affiliation=owner,collaborator", token),
   ]);
 
   const languageCounts = new Map<string, number>();
   const summarized = (repos ?? [])
     .filter((repo) => !repo.fork)
-    .slice(0, 25)
+    .slice(0, 12)
     .map((repo) => {
       if (repo.language) languageCounts.set(repo.language, (languageCounts.get(repo.language) ?? 0) + 1);
       return {
@@ -72,13 +73,14 @@ export async function getViewerExperience(token: string): Promise<GitHubExperien
         language: repo.language,
         description: repo.description,
         stars: repo.stargazers_count,
-        topics: repo.topics ?? [],
+        topics: (repo.topics ?? []).slice(0, 5),
       };
     });
 
   const languages = Array.from(languageCounts.entries())
     .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
 
   return {
     login: viewer.login,
