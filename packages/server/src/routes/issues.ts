@@ -49,9 +49,8 @@ issuesRouter.get("/:nodeId", async (req, res, next) => {
     const auth = req.headers.authorization?.replace(/^Bearer\s+/i, "");
     let claim = null;
     if (auth) {
-      const { verify } = await import("jsonwebtoken");
       try {
-        const payload = verify(auth, process.env.JWT_SECRET!) as { userId: number };
+        const payload = jwt.verify(auth, process.env.JWT_SECRET!) as SessionPayload;
         const found = await query("SELECT * FROM claims WHERE user_id=$1 AND issue_node_id=$2", [payload.userId, req.params.nodeId]);
         claim = found.rows[0] ?? null;
       } catch { /* Public score still works with an expired token. */ }

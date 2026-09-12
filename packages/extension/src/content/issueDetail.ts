@@ -37,13 +37,24 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, profile
 
   const draw = () => {
     const progress = profile ? Math.min(100, profile.xpIntoLevel / profile.xpForNextLevel * 100) : 0;
+    const finished = claim && claim.status === "merged";
+    const awarded = claim ? (claim.xpAwarded ?? (claim as Claim & { xp_awarded?: number }).xp_awarded ?? 0) : 0;
+    // While the PR sits in review, keep the big number as the bounty on the
+    // line so the user still sees what's on the table; once the claim
+    // settles, the big number becomes the actual XP that landed.
+    const bigValue = finished ? awarded : score.xp;
+    const kicker = !claim ? "QUEST BOUNTY"
+      : claim.status === "submitted" ? "AWAITING APPROVAL"
+      : claim.status === "merged" ? "XP EARNED"
+      : claim.status === "closed" ? "PR CLOSED - RE-CLAIM"
+      : "QUEST BOUNTY";
     card.innerHTML = `
       <button class="ql-collapse" aria-label="Collapse Questline">⌄</button>
-      <div class="ql-orb"><span>Q</span><b>${score.xp >= 1000 ? `${score.xp / 1000}k` : score.xp}</b></div>
+      <div class="ql-orb"><span>Q</span><b>${bigValue >= 1000 ? `${bigValue / 1000}k` : bigValue}</b></div>
       <div class="ql-card-body">
-        <div class="ql-kicker">QUEST BOUNTY</div>
-        <div class="ql-big-xp">${score.xp.toLocaleString()}<small> XP</small></div>
-        <div class="ql-meta">${escapeHtml(score.repoFullName)} <span>#${score.issueNumber}</span></div>
+        <div class="ql-kicker">${kicker}</div>
+        <div class="ql-big-xp">${bigValue.toLocaleString()}<small> XP</small></div>
+        <div class="ql-meta">${escapeHtml(score.repoFullName)} <span>#${score.issueNumber}</span>${finished && awarded !== score.xp ? ` <span class="ql-of-bounty">of ${score.xp.toLocaleString()} bounty</span>` : ""}</div>
         <div class="ql-age"><i></i> Open ${score.daysOpen} ${score.daysOpen === 1 ? "day" : "days"}</div>
         <div class="ql-action">${actionMarkup(claim)}</div>
         <p class="ql-error" hidden></p>
@@ -74,8 +85,9 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, profile
           const prUrl = action.querySelector<HTMLInputElement>("input")!.value;
           const response = await api<{ claim: Claim; xpAwarded: number }>(`/claims/${claim!.id}/submit`, { method: "POST", body: JSON.stringify({ prUrl }) });
           claim = response.claim;
-          await playXpGain(response.xpAwarded, profile!);
           profile = await api<UserProfile>("/users/me");
+          if (response.xpAwarded > 0) await playXpGain(response.xpAwarded, profile);
+          else showToast("PR submitted — XP will unlock once a maintainer approves it.");
           draw();
         }));
       }
@@ -96,42 +108,100 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, profile
 }
 
 function actionMarkup(claim: Claim | null) {
-  if (!claim) return '<button class="ql-primary">Claim quest <span>→</span></button>';
+  if (!claim || claim.status === "abandoned" || claim.status === "closed") {
+    const label = claim?.status === "closed" ? "Try again" : "Claim quest";
+    return `<button class="ql-primary">${label} <span>→</span></button>`;
+  }
   if (claim.status === "claimed") return '<button class="ql-primary">Link your PR <span>→</span></button>';
   const awarded = claim.xpAwarded ?? (claim as Claim & { xp_awarded?: number }).xp_awarded ?? 0;
+  if (claim.status === "submitted") return `<button class="ql-primary ql-review" disabled>⏳ In Review <span>Awaiting approval</span></button>`;
   return `<button class="ql-primary ql-complete" disabled>✓ Complete <span>+${awarded.toLocaleString()} XP</span></button>`;
 }
 
-async function playXpGain(amount: number, before: UserProfile) {
+export function showToast(message: string) {
+  const toast = document.createElement("div");
+  toast.className = "ql-toast";
+  toast.dataset.questlineRoot = "1";
+  toast.textContent = message;
+  document.body.append(toast);
+  requestAnimationFrame(() => toast.classList.add("ql-toast-in"));
+  setTimeout(() => {
+    toast.classList.remove("ql-toast-in");
+    setTimeout(() => toast.remove(), 400);
+  }, 3600);
+}
+
+export async function playXpGain(amount: number, after: UserProfile) {
   const overlay = document.createElement("div");
   overlay.className = "ql-gain";
   overlay.dataset.questlineRoot = "1";
-  overlay.innerHTML = '<div class="ql-particles"></div><div class="ql-gain-label">QUEST COMPLETE</div><div class="ql-gain-number">+0 XP</div><div class="ql-level-up" hidden>LEVEL UP</div>';
+  const targetPct = Math.min(100, after.xpIntoLevel / after.xpForNextLevel * 100);
+  overlay.innerHTML = `
+    <div class="ql-edge ql-edge-left"></div>
+    <div class="ql-edge ql-edge-right"></div>
+    <div class="ql-gain-body">
+      <div class="ql-gain-label">ISSUE RESOLVED</div>
+      <div class="ql-gain-number">+0 XP</div>
+      <div class="ql-level-up" hidden>LEVEL UP</div>
+      <div class="ql-gain-bar">
+        <div class="ql-gain-bar-labels"><span>LEVEL ${after.level}</span><span>LEVEL ${after.level + 1}</span></div>
+        <div class="ql-gain-bar-track"><i style="width:0%"></i></div>
+        <div class="ql-gain-bar-meta"><span>${after.xpIntoLevel.toLocaleString()} XP</span><span>${after.xpForNextLevel.toLocaleString()} XP</span></div>
+      </div>
+      <div class="ql-gain-hint">Click anywhere to dismiss</div>
+    </div>`;
   document.body.append(overlay);
-  const particles = overlay.querySelector(".ql-particles")!;
-  for (let i = 0; i < 28; i++) {
-    const dot = document.createElement("i");
-    const angle = Math.PI * 2 * i / 28;
-    dot.style.setProperty("--x", `${Math.cos(angle) * (120 + Math.random() * 180)}px`);
-    dot.style.setProperty("--y", `${Math.sin(angle) * (120 + Math.random() * 180)}px`);
-    dot.style.setProperty("--delay", `${Math.random() * 140}ms`);
-    particles.append(dot);
-  }
-  const target = overlay.querySelector<HTMLElement>(".ql-gain-number")!;
+
+  const spawnEdgeConfetti = (edge: HTMLElement, dir: 1 | -1) => {
+    for (let i = 0; i < 70; i++) {
+      const piece = document.createElement("i");
+      const width = 10 + Math.random() * 10;
+      const height = 6 + Math.random() * 6;
+      piece.style.top = `${Math.random() * 90 + 2}vh`;
+      piece.style.setProperty("--push", `${dir * (14 + Math.random() * 32)}vw`);
+      piece.style.setProperty("--sway", `${dir * (2 + Math.random() * 6)}vw`);
+      piece.style.setProperty("--fall", `${80 + Math.random() * 40}vh`);
+      piece.style.setProperty("--rot", `${dir * (240 + Math.random() * 540)}deg`);
+      piece.style.setProperty("--duration", `${2600 + Math.random() * 1400}ms`);
+      piece.style.setProperty("--delay", `${Math.random() * 900}ms`);
+      piece.style.setProperty("--w", `${width}px`);
+      piece.style.setProperty("--h", `${height}px`);
+      piece.style.setProperty("--hue", `${[52, 152, 262, 32, 200, 340][i % 6]}`);
+      edge.append(piece);
+    }
+  };
+  spawnEdgeConfetti(overlay.querySelector<HTMLElement>(".ql-edge-left")!, 1);
+  spawnEdgeConfetti(overlay.querySelector<HTMLElement>(".ql-edge-right")!, -1);
+
+  const number = overlay.querySelector<HTMLElement>(".ql-gain-number")!;
+  const barFill = overlay.querySelector<HTMLElement>(".ql-gain-bar-track i")!;
   const start = performance.now();
   await new Promise<void>((resolve) => {
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / 800);
-      target.textContent = `+${Math.floor(amount * (1 - Math.pow(1 - t, 3))).toLocaleString()} XP`;
+      const t = Math.min(1, (now - start) / 900);
+      const eased = 1 - Math.pow(1 - t, 3);
+      number.textContent = `+${Math.floor(amount * eased).toLocaleString()} XP`;
+      barFill.style.width = `${targetPct * eased}%`;
       if (t < 1) requestAnimationFrame(tick); else resolve();
     };
     requestAnimationFrame(tick);
   });
-  const crossesLevel = before.xpIntoLevel + amount >= before.xpForNextLevel;
-  if (crossesLevel) { const banner = overlay.querySelector<HTMLElement>(".ql-level-up")!; banner.hidden = false; await new Promise((r) => setTimeout(r, 600)); }
-  await new Promise((r) => setTimeout(r, 450));
-  overlay.classList.add("ql-gain-out");
-  setTimeout(() => overlay.remove(), 350);
+
+  const crossedLevel = amount > 0 && after.xpIntoLevel < amount;
+  if (crossedLevel) {
+    const banner = overlay.querySelector<HTMLElement>(".ql-level-up")!;
+    banner.hidden = false;
+  }
+  const hint = overlay.querySelector<HTMLElement>(".ql-gain-hint")!;
+  setTimeout(() => hint.classList.add("ql-gain-hint-in"), 700);
+
+  await new Promise<void>((resolve) => {
+    const dismiss = () => {
+      overlay.classList.add("ql-gain-out");
+      setTimeout(() => { overlay.remove(); resolve(); }, 450);
+    };
+    overlay.addEventListener("click", dismiss, { once: true });
+  });
 }
 
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]!);

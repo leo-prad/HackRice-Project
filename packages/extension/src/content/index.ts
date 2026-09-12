@@ -1,5 +1,13 @@
 import { mountIssueList } from "./issueList";
-import { mountIssueDetail } from "./issueDetail";
+import { mountIssueDetail, playXpGain, showToast } from "./issueDetail";
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "questline:xp-gain" && message.after) {
+    const amount = Number(message.amount) || 0;
+    if (amount > 0) void playXpGain(amount, message.after);
+    else showToast(typeof message.toast === "string" ? message.toast : "PR submitted — XP will unlock once a maintainer approves it.");
+  }
+});
 
 let previousRoute = "";
 let timer = 0;
