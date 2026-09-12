@@ -128,18 +128,21 @@ export async function playXpGain(amount: number, after: UserProfile) {
   document.body.append(overlay);
 
   const spawnEdgeConfetti = (edge: HTMLElement, dir: 1 | -1) => {
-    for (let i = 0; i < 70; i++) {
-      const dot = document.createElement("i");
-      const distance = 260 + Math.random() * 520;
-      const size = 10 + Math.random() * 10;
-      dot.style.setProperty("--x", `${dir * distance}px`);
-      dot.style.setProperty("--y", `${(Math.random() - 0.5) * 640}px`);
-      dot.style.setProperty("--fall", `${180 + Math.random() * 260}px`);
-      dot.style.setProperty("--rot", `${360 + Math.random() * 540}deg`);
-      dot.style.setProperty("--delay", `${Math.random() * 420}ms`);
-      dot.style.setProperty("--size", `${size}px`);
-      dot.style.setProperty("--hue", `${[52, 152, 262, 32, 200, 340][i % 6]}`);
-      edge.append(dot);
+    for (let i = 0; i < 55; i++) {
+      const piece = document.createElement("i");
+      const distanceVw = 42 + Math.random() * 34;
+      const width = 12 + Math.random() * 12;
+      const height = 6 + Math.random() * 8;
+      piece.style.setProperty("--x", `${dir * distanceVw}vw`);
+      piece.style.setProperty("--y", `${(Math.random() - 0.5) * 520}px`);
+      piece.style.setProperty("--peak", `${-(120 + Math.random() * 140)}px`);
+      piece.style.setProperty("--fall", `${420 + Math.random() * 340}px`);
+      piece.style.setProperty("--rot", `${dir * (540 + Math.random() * 720)}deg`);
+      piece.style.setProperty("--delay", `${Math.random() * 520}ms`);
+      piece.style.setProperty("--w", `${width}px`);
+      piece.style.setProperty("--h", `${height}px`);
+      piece.style.setProperty("--hue", `${[52, 152, 262, 32, 200, 340][i % 6]}`);
+      edge.append(piece);
     }
   };
   spawnEdgeConfetti(overlay.querySelector<HTMLElement>(".ql-edge-left")!, 1);
