@@ -19,9 +19,17 @@ export async function refreshSubmittedClaimsForUser(userId: number) {
   for (const row of claims.rows) {
     try {
       const parsed = parsePullUrl(row.pr_url!);
-      const pull = await getPull(parsed.owner, parsed.repo, parsed.number, token);
-      if (pull.merged) { await awardMergedClaim(row.id, userId); merged += 1; }
-      else if (pull.state === "closed") { await markClaimClosed(row.id, userId); closed += 1; }
+      try {
+        const pull = await getPull(parsed.owner, parsed.repo, parsed.number, token);
+        if (pull.merged) { await awardMergedClaim(row.id, userId); merged += 1; }
+        else if (pull.state === "closed") { await markClaimClosed(row.id, userId); closed += 1; }
+      } catch (error) {
+        // A deleted PR (or the whole repo going away) 404s; treat as closed.
+        if (error instanceof Error && /GitHub 404/.test(error.message)) {
+          await markClaimClosed(row.id, userId);
+          closed += 1;
+        }
+      }
     } catch { /* leave the claim for a later sweep */ }
   }
   return { merged, closed };

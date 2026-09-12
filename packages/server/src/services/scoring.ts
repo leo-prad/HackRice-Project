@@ -2,7 +2,11 @@ import { GoogleGenAI } from "@google/genai";
 import type { IssueScore } from "@questline/shared";
 import { XP_LADDER } from "@questline/shared";
 import { query } from "../db.js";
-import { getIssueBundle, parseIssueUrl } from "./github.js";
+import { contributorCount, getIssueBundle, parseIssueUrl } from "./github.js";
+
+// Personal or single-contributor repos can't produce a competitive bounty:
+// nobody else can review, so the ceiling is capped independently of Gemini.
+const LOW_STAKES_CAP = 300;
 
 const SYSTEM_PROMPT = `You assign XP bounties to open source GitHub issues for a developer game.
 
@@ -36,7 +40,9 @@ const xpRarity = (xp: number) =>
 const toScore = (row: ScoreRow): IssueScore => ({
   issueNodeId: row.issue_node_id, issueUrl: row.issue_url, repoFullName: row.repo_full_name,
   repoOwnerId: String(row.repo_owner_id), issueNumber: row.issue_number, title: row.title,
-  xp: snapXp(row.xp), daysOpen: row.days_open, scoredAt: row.scored_at.toISOString(),
+  // Leave the sub-cap values alone; only snap the larger raw legacy values.
+  xp: row.xp <= LOW_STAKES_CAP ? row.xp : snapXp(row.xp),
+  daysOpen: row.days_open, scoredAt: row.scored_at.toISOString(),
 });
 
 export async function scoreIssue(issueUrl: string, viewerToken?: string): Promise<IssueScore> {
@@ -64,7 +70,10 @@ export async function scoreIssue(issueUrl: string, viewerToken?: string): Promis
   });
   const raw = JSON.parse(response.output_text ?? "{}") as { xp?: number };
   if (!Number.isInteger(raw.xp) || (raw.xp ?? 0) <= 0) throw new Error("Gemini returned an invalid XP score");
-  const xp = snapXp(raw.xp!);
+  let xp: number = snapXp(raw.xp!);
+  const contributors = await contributorCount(parsed.owner, parsed.repo, viewerToken);
+  const lowStakes = repository.private || contributors <= 1;
+  if (lowStakes) xp = Math.min(xp, LOW_STAKES_CAP);
 
   // First database write wins, so concurrent viewers always receive the same immutable bounty.
   // quest_key / difficulty_score / rarity / scoring_version were added by a parallel schema

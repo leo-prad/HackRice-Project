@@ -73,7 +73,11 @@ claimsRouter.post("/:id/refresh", async (req, res, next) => {
         return res.json({ claim: updated, xpAwarded: 0 });
       }
       return res.json({ claim, xpAwarded: 0 });
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && /GitHub 404/.test(error.message)) {
+        const updated = await markClaimClosed(Number(claim.id), req.session!.userId);
+        return res.json({ claim: updated, xpAwarded: 0 });
+      }
       return res.json({ claim, xpAwarded: 0 });
     }
   } catch (error) { next(error); }

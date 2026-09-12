@@ -31,7 +31,7 @@ export interface GitHubIssue {
   created_at: string; comments: number; labels: Array<{ name?: string } | string>;
   pull_request?: unknown;
 }
-export interface GitHubRepo { full_name: string; stargazers_count: number; open_issues_count: number; owner: { id: number } }
+export interface GitHubRepo { full_name: string; stargazers_count: number; open_issues_count: number; private: boolean; owner: { id: number; type?: string } }
 export interface GitHubComment { body: string | null }
 export interface GitHubPull { user: { id: number; login: string }; merged: boolean; state: string }
 
@@ -47,3 +47,13 @@ export async function getIssueBundle(owner: string, repo: string, number: number
 
 export const getPull = (owner: string, repo: string, number: number, token?: string) =>
   githubFetch<GitHubPull>(`/repos/${owner}/${repo}/pulls/${number}`, token);
+
+// Cheap contributor probe: ask for two, so we can tell "single-contributor"
+// from "many" without paginating the full list. Anonymous view for public
+// repos, authenticated for private.
+export async function contributorCount(owner: string, repo: string, token?: string): Promise<number> {
+  try {
+    const list = await githubFetch<Array<unknown>>(`/repos/${owner}/${repo}/contributors?per_page=2&anon=1`, token);
+    return list.length;
+  } catch { return 0; }
+}
