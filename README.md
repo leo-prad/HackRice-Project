@@ -1,7 +1,7 @@
 # ENV:
 PORT=8787
 
-DATABASE_URL=postgresql://postgres:[HackRice1201]@db.ueqevqwtnyobezugwief.supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres.ueqevqwtnyobezugwief:HackRice1201@aws-0-us-west-2.pooler.supabase.com:6543/postgres
 
 JWT_SECRET=b7710fd880d83cf1beb078b0a2ebc87776e346cc8307acdba63c49e5e4ce224a
 
