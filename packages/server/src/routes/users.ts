@@ -2,10 +2,13 @@ import { Router } from "express";
 import { levelProgress } from "@questline/shared";
 import { requireAuth } from "../auth/jwt.js";
 import { query } from "../db.js";
+import { refreshSubmittedClaimsForUser } from "../services/claimRefresh.js";
 
 export const usersRouter = Router();
 usersRouter.get("/me", requireAuth, async (req, res, next) => {
   try {
+    // Opportunistically settle any merged/closed PRs before returning the profile.
+    await refreshSubmittedClaimsForUser(req.session!.userId).catch(() => {});
     const [userResult, claims, events] = await Promise.all([
       query("SELECT id,github_id,github_login,avatar_url,total_xp,created_at FROM users WHERE id=$1", [req.session!.userId]),
       query(`SELECT c.*,s.title,s.xp,s.repo_full_name,s.issue_number,s.issue_url,s.days_open FROM claims c JOIN issue_scores s ON s.issue_node_id=c.issue_node_id WHERE c.user_id=$1 ORDER BY c.claimed_at DESC`, [req.session!.userId]),

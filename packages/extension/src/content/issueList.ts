@@ -87,8 +87,13 @@ function setClaimState(action: IssueAction, claim?: ClaimRecord) {
     action.button.textContent = "In progress";
     return;
   }
+  if (claim.status === "submitted") {
+    action.button.classList.add("ql-accept-button-progress");
+    action.button.textContent = "In Review";
+    return;
+  }
   action.button.classList.add("ql-accept-button-done");
-  action.button.textContent = claim.status === "merged" ? "Complete" : "Submitted";
+  action.button.textContent = claim.status === "merged" ? "Complete" : "Closed";
 }
 
 function setLoadError(action: IssueAction, error?: unknown) {

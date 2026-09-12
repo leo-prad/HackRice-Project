@@ -2,7 +2,8 @@ import { Router } from "express";
 import { requireAuth } from "../auth/jwt.js";
 import { query } from "../db.js";
 import { getPull, parsePullUrl } from "../services/github.js";
-import { awardSubmittedClaim } from "../services/xp.js";
+import { awardMergedClaim, awardSubmittedClaim, markClaimClosed } from "../services/xp.js";
+import { refreshSubmittedClaimsForUser } from "../services/claimRefresh.js";
 
 export const claimsRouter = Router();
 claimsRouter.use(requireAuth);
@@ -49,5 +50,40 @@ claimsRouter.get("/mine", async (req, res, next) => {
        FROM claims c JOIN issue_scores s ON s.issue_node_id=c.issue_node_id
        WHERE c.user_id=$1 ORDER BY c.claimed_at DESC`, [req.session!.userId]);
     res.json({ claims: result.rows });
+  } catch (error) { next(error); }
+});
+
+claimsRouter.post("/:id/refresh", async (req, res, next) => {
+  try {
+    const claimRow = await query("SELECT c.*, s.repo_owner_id FROM claims c JOIN issue_scores s ON s.issue_node_id=c.issue_node_id WHERE c.id=$1 AND c.user_id=$2",
+      [req.params.id, req.session!.userId]);
+    if (!claimRow.rowCount) return res.status(404).json({ error: "Claim not found" });
+    const claim = claimRow.rows[0];
+    if (claim.status !== "submitted" || !claim.pr_url) return res.json({ claim, xpAwarded: 0 });
+    const tokenRow = await query<{ github_token: string }>("SELECT github_token FROM users WHERE id=$1", [req.session!.userId]);
+    const parsed = parsePullUrl(claim.pr_url);
+    try {
+      const pull = await getPull(parsed.owner, parsed.repo, parsed.number, tokenRow.rows[0].github_token);
+      if (pull.merged) {
+        const result = await awardMergedClaim(Number(claim.id), req.session!.userId);
+        return res.json(result);
+      }
+      if (pull.state === "closed") {
+        const updated = await markClaimClosed(Number(claim.id), req.session!.userId);
+        return res.json({ claim: updated, xpAwarded: 0 });
+      }
+      return res.json({ claim, xpAwarded: 0 });
+    } catch {
+      return res.json({ claim, xpAwarded: 0 });
+    }
+  } catch (error) { next(error); }
+});
+
+// Convenience: sweep all of the caller's submitted claims. Used by /users/me for
+// opportunistic polling.
+claimsRouter.post("/refresh-mine", async (req, res, next) => {
+  try {
+    const result = await refreshSubmittedClaimsForUser(req.session!.userId);
+    res.json(result);
   } catch (error) { next(error); }
 });

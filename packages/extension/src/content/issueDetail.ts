@@ -37,10 +37,14 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, profile
 
   const draw = () => {
     const progress = profile ? Math.min(100, profile.xpIntoLevel / profile.xpForNextLevel * 100) : 0;
-    const finished = claim && (claim.status === "submitted" || claim.status === "merged");
+    const finished = claim && (claim.status === "submitted" || claim.status === "merged" || claim.status === "closed");
     const awarded = claim ? (claim.xpAwarded ?? (claim as Claim & { xp_awarded?: number }).xp_awarded ?? 0) : 0;
     const bigValue = finished ? awarded : score.xp;
-    const kicker = finished ? "XP EARNED" : "QUEST BOUNTY";
+    const kicker = !claim ? "QUEST BOUNTY"
+      : claim.status === "submitted" ? "XP HELD"
+      : claim.status === "merged" ? "XP EARNED"
+      : claim.status === "closed" ? "XP EARNED"
+      : "QUEST BOUNTY";
     card.innerHTML = `
       <button class="ql-collapse" aria-label="Collapse Questline">⌄</button>
       <div class="ql-orb"><span>Q</span><b>${bigValue >= 1000 ? `${bigValue / 1000}k` : bigValue}</b></div>
@@ -103,6 +107,8 @@ function actionMarkup(claim: Claim | null) {
   if (!claim) return '<button class="ql-primary">Claim quest <span>→</span></button>';
   if (claim.status === "claimed") return '<button class="ql-primary">Link your PR <span>→</span></button>';
   const awarded = claim.xpAwarded ?? (claim as Claim & { xp_awarded?: number }).xp_awarded ?? 0;
+  if (claim.status === "submitted") return `<button class="ql-primary ql-review" disabled>⏳ In Review <span>+${awarded.toLocaleString()} XP</span></button>`;
+  if (claim.status === "closed") return `<button class="ql-primary ql-complete" disabled>✕ PR Closed <span>+${awarded.toLocaleString()} XP</span></button>`;
   return `<button class="ql-primary ql-complete" disabled>✓ Complete <span>+${awarded.toLocaleString()} XP</span></button>`;
 }
 

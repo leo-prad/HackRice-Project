@@ -21,7 +21,7 @@ export interface IssueScore {
   scoredAt: string;
 }
 
-export type ClaimStatus = "claimed" | "submitted" | "merged" | "abandoned";
+export type ClaimStatus = "claimed" | "submitted" | "merged" | "abandoned" | "closed";
 
 export interface Claim {
   id: number;
