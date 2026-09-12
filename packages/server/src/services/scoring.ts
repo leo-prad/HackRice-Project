@@ -46,19 +46,24 @@ export async function scoreIssue(issueUrl: string, viewerToken?: string): Promis
   const labels = issue.labels.map((label) => typeof label === "string" ? label : label.name).filter(Boolean).join(", ") || "none";
   const prompt = `Repository: ${repository.full_name} (${repository.stargazers_count} stars, ${repository.open_issues_count} open issues)\nIssue #${issue.number}: ${issue.title}\nLabels: ${labels}\nOpened: ${daysOpen} days ago\nComments: ${issue.comments}\nAlready has a linked PR: no\n\nBody:\n${(issue.body ?? "").slice(0, 4000)}\n\nTop comments:\n${comments.slice(0, 3).map((c) => (c.body ?? "").slice(0, 500)).join("\n\n")}`;
 
+  if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set");
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const response = await ai.interactions.create({
-    model: process.env.GEMINI_MODEL ?? "gemini-3.8-flash",
-    system_instruction: SYSTEM_PROMPT,
-    input: prompt,
-    generation_config: { thinking_level: "low" },
-    response_format: {
-      type: "text",
-      mime_type: "application/json",
-      schema: { type: "object", properties: { xp: { type: "integer", minimum: 1 } }, required: ["xp"], additionalProperties: false },
+  const response = await ai.models.generateContent({
+    model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
+    contents: prompt,
+    config: {
+      systemInstruction: SYSTEM_PROMPT,
+      responseMimeType: "application/json",
+      responseJsonSchema: {
+        type: "object",
+        properties: { xp: { type: "integer", minimum: 1 } },
+        required: ["xp"],
+      },
+      thinkingConfig: { thinkingBudget: 0 },
     },
   });
-  const raw = JSON.parse(response.output_text ?? "{}") as { xp?: number };
+  const text = response.text ?? "";
+  const raw = JSON.parse(text || "{}") as { xp?: number };
   if (!Number.isInteger(raw.xp) || (raw.xp ?? 0) <= 0) throw new Error("Gemini returned an invalid XP score");
   const xp = snapXp(raw.xp!);
 
