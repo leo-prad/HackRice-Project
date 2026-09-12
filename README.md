@@ -11,16 +11,21 @@ DASHBOARD_URL=http://localhost:5173
 
 # GitHub OAuth app
 GITHUB_CLIENT_ID=Ov23liOJPT6bsBpfaN1U
+
 GITHUB_CLIENT_SECRET=e5baf64e89e3bdb8902e8d068ba4c826cdfbe161
+
 GITHUB_OAUTH_CALLBACK=http://localhost:8787/auth/github/callback
+
 DASHBOARD_URL=http://127.0.0.1:5174
 
 # Gemini
 GEMINI_API_KEY=AIzaSyBfnOkZvUSjSdhebrykAir7QeYzdVxj71M
+
 GEMINI_MODEL=gemini-3.8-flash
 
 # Feature flags
 ENABLE_DECAY=false
+
 DECAY_PERCENT_PER_DAY=2
 
 # Questline
