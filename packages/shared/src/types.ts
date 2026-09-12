@@ -153,6 +153,12 @@ export interface XpEvent {
   createdAt: string;
 }
 
+export interface XpTimelinePoint {
+  bucket: string;
+  xpEarned: number;
+  awardCount: number;
+}
+
 export interface LeaderboardEntry {
   rank: number;
   login: string;

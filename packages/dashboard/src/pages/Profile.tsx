@@ -1,6 +1,6 @@
-import type { SkillCategory, UserProfile } from "@questline/shared";
+import type { SkillCategory, UserProfile, XpTimelinePoint } from "@questline/shared";
 import { roman, skillProgress } from "@questline/shared";
-import { ArrowUpRight, CheckCircle2, Link2, Swords, Trophy } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, DatabaseZap, Link2, Swords, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { api } from "../lib/api";
@@ -9,9 +9,16 @@ const CATEGORY_ORDER: SkillCategory[] = ["Backend", "Frontend", "Systems", "Data
 
 export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [timeline, setTimeline] = useState<XpTimelinePoint[]>([]);
   const [error, setError] = useState("");
   useEffect(() => {
-    api<UserProfile>("/users/me").then(setProfile).catch((reason) => setError(reason instanceof Error ? reason.message : "Could not load profile"));
+    void Promise.all([
+      api<UserProfile>("/users/me"),
+      api<{ timeline: XpTimelinePoint[] }>("/users/me/timeline").catch(() => ({ timeline: [] })),
+    ]).then(([nextProfile, nextTimeline]) => {
+      setProfile(nextProfile);
+      setTimeline(nextTimeline.timeline);
+    }).catch((reason) => setError(reason instanceof Error ? reason.message : "Could not load profile"));
   }, []);
   if (error) return <p className="p-20 text-center text-red-400">{error}</p>;
   if (!profile) return <p className="p-20 text-center font-mono text-xs text-slate-600">LOADING PLAYER DATA…</p>;
@@ -55,6 +62,8 @@ export default function Profile() {
         <Stat icon={<CheckCircle2 />} label="Quests completed" value={String(profile.stats.questsCompleted)} />
         <Stat icon={<Trophy />} label="Global rank" value={profile.stats.globalRank ? `#${profile.stats.globalRank}` : "—"} />
       </div>
+
+      <XpTimeline timeline={timeline} />
 
       <section className="mt-14">
         <h2 className="text-lg font-bold">Skill tree</h2>
@@ -145,6 +154,47 @@ export default function Profile() {
         </section>
       </div>
     </div>
+  );
+}
+
+function XpTimeline({ timeline }: { timeline: XpTimelinePoint[] }) {
+  const values = new Map(timeline.map((point) => [point.bucket.slice(0, 10), point]));
+  const days = Array.from({ length: 14 }, (_, index) => {
+    const date = new Date();
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() - (13 - index));
+    const key = date.toISOString().slice(0, 10);
+    return {
+      key,
+      label: date.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" }),
+      xp: values.get(key)?.xpEarned ?? 0,
+    };
+  });
+  const maxXp = Math.max(1, ...days.map((day) => day.xp));
+
+  return (
+    <section className="mt-14 rounded-2xl border border-white/[.08] bg-panel p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold">XP velocity</h2>
+          <p className="mt-1 text-xs text-slate-500">Daily XP earned over the last 14 days</p>
+        </div>
+        <span className="flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-400/10 px-3 py-1 font-mono text-[10px] font-bold tracking-wider text-orange-300">
+          <DatabaseZap size={13} /> TIGER DATA LIVE ANALYTICS
+        </span>
+      </div>
+      <div className="mt-7 flex h-40 items-end gap-2" aria-label="Daily XP chart">
+        {days.map((day) => (
+          <div key={day.key} className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-2" title={`${day.label}: ${day.xp.toLocaleString()} XP`}>
+            <span className="opacity-0 font-mono text-[9px] text-acid transition-opacity group-hover:opacity-100">{day.xp || ""}</span>
+            <i
+              className="w-full min-w-1 rounded-t bg-gradient-to-t from-orange-500/50 to-acid shadow-[0_0_12px_rgba(185,244,86,.2)]"
+              style={{ height: `${day.xp ? Math.max(8, (day.xp / maxXp) * 112) : 3}px` }}
+            />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
