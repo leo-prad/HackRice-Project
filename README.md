@@ -1,4 +1,4 @@
-# Questline
+# Questlines
 
 Questline is a Chrome extension and web dashboard that turns GitHub issues into XP quests. The first viewer triggers an AI score, PostgreSQL stores that score forever, and every player sees the same bounty.
 
