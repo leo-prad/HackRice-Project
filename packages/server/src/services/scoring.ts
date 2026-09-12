@@ -27,14 +27,17 @@ interface ScoreRow {
   issue_number: number; title: string; xp: number; days_open: number; scored_at: Date;
 }
 
+export const snapXp = (raw: number) => XP_LADDER.reduce((best, rung) =>
+  Math.abs(rung - raw) < Math.abs(best - raw) ? rung : best, XP_LADDER[0]);
+
+const xpRarity = (xp: number) =>
+  xp >= 12000 ? "legendary" : xp >= 5000 ? "epic" : xp >= 2000 ? "rare" : xp >= 1000 ? "uncommon" : "common";
+
 const toScore = (row: ScoreRow): IssueScore => ({
   issueNodeId: row.issue_node_id, issueUrl: row.issue_url, repoFullName: row.repo_full_name,
   repoOwnerId: String(row.repo_owner_id), issueNumber: row.issue_number, title: row.title,
-  xp: row.xp, daysOpen: row.days_open, scoredAt: row.scored_at.toISOString(),
+  xp: snapXp(row.xp), daysOpen: row.days_open, scoredAt: row.scored_at.toISOString(),
 });
-
-export const snapXp = (raw: number) => XP_LADDER.reduce((best, rung) =>
-  Math.abs(rung - raw) < Math.abs(best - raw) ? rung : best, XP_LADDER[0]);
 
 export async function scoreIssue(issueUrl: string, viewerToken?: string): Promise<IssueScore> {
   const parsed = parseIssueUrl(issueUrl);
@@ -64,10 +67,12 @@ export async function scoreIssue(issueUrl: string, viewerToken?: string): Promis
   const xp = snapXp(raw.xp!);
 
   // First database write wins, so concurrent viewers always receive the same immutable bounty.
+  // quest_key / difficulty_score / rarity / scoring_version were added by a parallel schema
+  // change; populate sensible defaults so the insert never fails on NOT NULL.
   const inserted = await query<ScoreRow>(
-    `INSERT INTO issue_scores (issue_node_id,issue_url,repo_full_name,repo_owner_id,issue_number,title,xp,days_open)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (issue_node_id) DO NOTHING RETURNING *`,
-    [issue.node_id, parsed.canonical, repository.full_name, repository.owner.id, issue.number, issue.title, xp, daysOpen],
+    `INSERT INTO issue_scores (issue_node_id,issue_url,repo_full_name,repo_owner_id,issue_number,title,xp,days_open,quest_key,difficulty_score,rarity,scoring_version)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (issue_node_id) DO NOTHING RETURNING *`,
+    [issue.node_id, parsed.canonical, repository.full_name, repository.owner.id, issue.number, issue.title, xp, daysOpen, issue.node_id, Math.min(99.99, xp / 2000), xpRarity(xp), 1],
   );
   if (inserted.rowCount) return toScore(inserted.rows[0]);
   const winner = await query<ScoreRow>("SELECT * FROM issue_scores WHERE issue_node_id=$1", [issue.node_id]);

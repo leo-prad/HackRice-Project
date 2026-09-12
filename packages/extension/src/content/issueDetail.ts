@@ -115,7 +115,7 @@ export async function playXpGain(amount: number, after: UserProfile) {
     <div class="ql-edge ql-edge-left"></div>
     <div class="ql-edge ql-edge-right"></div>
     <div class="ql-gain-body">
-      <div class="ql-gain-label">QUEST COMPLETE</div>
+      <div class="ql-gain-label">ISSUE RESOLVED</div>
       <div class="ql-gain-number">+0 XP</div>
       <div class="ql-level-up" hidden>LEVEL UP</div>
       <div class="ql-gain-bar">
