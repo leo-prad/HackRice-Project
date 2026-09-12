@@ -6,8 +6,10 @@ type ClaimRecord = Claim & { issue_node_id?: string };
 
 type IssueAction = {
   root: HTMLDivElement;
+  controls: HTMLDivElement;
   pill: HTMLSpanElement;
   button: HTMLButtonElement;
+  notice: HTMLSpanElement;
 };
 
 const pending = new Set<string>();
@@ -52,6 +54,9 @@ function createAction(row: HTMLElement, issueUrl: string, issueTitle: string): I
   root.dataset.questlineRoot = "1";
   root.dataset.questlineIssueUrl = issueUrl;
 
+  const controls = document.createElement("div");
+  controls.className = "ql-list-controls";
+
   const pill = document.createElement("span");
   pill.className = "ql-list-xp ql-list-xp-loading";
   pill.textContent = "··· XP";
@@ -60,13 +65,18 @@ function createAction(row: HTMLElement, issueUrl: string, issueTitle: string): I
   const button = document.createElement("button");
   button.className = "ql-accept-button";
   button.type = "button";
-  button.textContent = "Claim";
+  button.textContent = "Accept";
   button.disabled = true;
-  button.setAttribute("aria-label", `Claim quest ${issueTitle}`);
+  button.setAttribute("aria-label", `Accept quest ${issueTitle}`);
 
-  root.append(pill, button);
+  const notice = document.createElement("span");
+  notice.className = "ql-list-notice";
+  notice.hidden = true;
+
+  controls.append(pill, button);
+  root.append(controls, notice);
   row.append(root);
-  return { root, pill, button };
+  return { root, controls, pill, button, notice };
 }
 
 function claimIssueNodeId(claim: ClaimRecord) {
@@ -74,26 +84,27 @@ function claimIssueNodeId(claim: ClaimRecord) {
 }
 
 function setClaimState(action: IssueAction, claim?: ClaimRecord) {
+  action.notice.hidden = true;
   action.button.disabled = false;
   action.button.classList.remove("ql-accept-button-done", "ql-accept-button-progress");
   if (!claim || claim.status === "abandoned" || claim.status === "closed") {
-    action.button.textContent = "Claim";
+    action.button.textContent = "Accept";
     return;
   }
 
   action.button.disabled = true;
   if (claim.status === "claimed") {
     action.button.classList.add("ql-accept-button-progress");
-    action.button.textContent = "In progress";
+    action.button.textContent = "In-Progress";
     return;
   }
   if (claim.status === "submitted") {
     action.button.classList.add("ql-accept-button-progress");
-    action.button.textContent = "In review";
+    action.button.textContent = "In-Review";
     return;
   }
   action.button.classList.add("ql-accept-button-done");
-  action.button.textContent = "Complete";
+  action.button.textContent = "Accepted";
 }
 
 function setQuestPill(action: IssueAction, score: IssueScore) {
@@ -106,9 +117,29 @@ function setQuestPill(action: IssueAction, score: IssueScore) {
 function setLoadError(action: IssueAction, error?: unknown) {
   action.pill.classList.remove("ql-list-xp-loading");
   action.pill.textContent = "XP unavailable";
-  action.button.textContent = "Claim";
+  action.button.textContent = "Accept";
   action.button.disabled = true;
+  action.notice.textContent = "Could not load Questline. Refresh to retry.";
+  action.notice.hidden = false;
   if (error instanceof Error) action.root.title = error.message;
+}
+
+function setPairRequired(action: IssueAction) {
+  action.pill.classList.remove("ql-list-xp-loading");
+  action.pill.textContent = "Pair required";
+  action.pill.setAttribute("aria-label", "Pair Questline to see this quest's XP");
+  action.button.textContent = "Accept";
+  action.button.disabled = false;
+  action.button.title = "Pair your extension first";
+  action.notice.textContent = "Pair your extension from your account first.";
+  action.notice.hidden = false;
+  action.root.removeAttribute("title");
+
+  action.button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.open(`${import.meta.env.VITE_DASHBOARD_URL || "http://localhost:5173"}/pair`, "_blank");
+  });
 }
 
 function wireAccept(action: IssueAction, score: IssueScore, initialClaim?: ClaimRecord) {
@@ -127,7 +158,7 @@ function wireAccept(action: IssueAction, score: IssueScore, initialClaim?: Claim
     }
 
     action.button.disabled = true;
-    action.button.textContent = "Claiming…";
+    action.button.textContent = "Accepting…";
     action.button.removeAttribute("title");
     try {
       claim = (await api<{ claim: ClaimRecord }>("/claims", {
@@ -139,7 +170,7 @@ function wireAccept(action: IssueAction, score: IssueScore, initialClaim?: Claim
       const message = error instanceof Error ? error.message : "Could not claim this quest";
       if (message.toLowerCase().includes("already have an active claim")) {
         action.button.classList.add("ql-accept-button-done");
-        action.button.textContent = "Claimed";
+        action.button.textContent = "In-Progress";
       } else {
         action.button.disabled = false;
         action.button.textContent = "Retry";
@@ -167,14 +198,16 @@ export async function mountIssueList() {
 
   try {
     const token = await storage.token();
+    if (!token) {
+      actions.forEach(setPairRequired);
+      return;
+    }
     const [scoreResult, claimResult] = await Promise.all([
       api<{ scores: IssueScore[] }>("/issues/score", {
         method: "POST",
         body: JSON.stringify({ issueUrls: [...actions.keys()] }),
       }),
-      token
-        ? api<{ claims: ClaimRecord[] }>("/claims/mine").catch(() => ({ claims: [] }))
-        : Promise.resolve({ claims: [] as ClaimRecord[] }),
+      api<{ claims: ClaimRecord[] }>("/claims/mine").catch(() => ({ claims: [] })),
     ]);
 
     const claims = new Map(

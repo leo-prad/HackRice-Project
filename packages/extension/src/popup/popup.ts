@@ -15,8 +15,9 @@ async function load() {
   } catch { await storage.clearToken(); drawLogin("Your pairing expired. Pair again."); }
 }
 
-function drawLogin(message = "") {
-  app.innerHTML = `${brand}<div class="login"><h2>Start your run</h2><p>Sign in on the dashboard, then paste your one-time pairing code.</p><input class="code" maxlength="10" placeholder="QUEST-4F2A"><button class="button" id="redeem">Pair extension</button><a class="button ghost" href="${dashboard}/pair" target="_blank">Open dashboard</a><p class="error">${message}</p></div>`;
+function drawLogin(message = "", canCancel = false) {
+  app.innerHTML = `${brand}<div class="login"><h2>${canCancel ? "Pair a new account" : "Start your run"}</h2><p>Sign in on the dashboard, then paste your one-time pairing code.</p><input class="code" maxlength="10" placeholder="QUEST-4F2A"><button class="button" id="redeem">Pair extension</button><a class="button ghost" href="${dashboard}/pair" target="_blank">Open dashboard</a>${canCancel ? '<button class="button ghost" id="cancel-pair">Cancel</button>' : ""}<p class="error">${message}</p></div>`;
+  app.querySelector("#cancel-pair")?.addEventListener("click", () => void load());
   app.querySelector("#redeem")?.addEventListener("click", async () => {
     const button = app.querySelector<HTMLButtonElement>("#redeem")!;
     const code = app.querySelector<HTMLInputElement>(".code")!.value;
@@ -44,7 +45,8 @@ function drawProfile(profile: UserProfile, entries: LeaderboardEntry[]) {
         })
         .join("")
     : '<div class="empty">No active quests yet.</div>';
-  app.innerHTML = `${brand}<div class="user"><img class="avatar" src="${profile.user.avatarUrl ?? ""}"><div><strong>@${profile.user.githubLogin}</strong><span class="level">LEVEL ${profile.level} · ${profile.user.totalXp.toLocaleString()} XP</span></div></div><div class="bar"><i style="width:${progress}%"></i></div><section class="section"><h3>ACTIVE QUESTS</h3><div class="quests">${quests}</div></section><section class="section"><h3>GLOBAL LEADERBOARD</h3>${shown.map((entry) => `<div class="row"><span class="rank">#${entry.rank}</span><img src="${entry.avatarUrl ?? ""}"><span class="name">${clean(entry.login)}</span><span class="xp">${entry.totalXp.toLocaleString()}</span></div>`).join("")}</section><a class="footer" href="${dashboard}" target="_blank">Open dashboard ↗</a>`;
+  app.innerHTML = `${brand}<div class="user"><img class="avatar" src="${profile.user.avatarUrl ?? ""}"><div><strong>@${profile.user.githubLogin}</strong><span class="level">LEVEL ${profile.level} · ${profile.user.totalXp.toLocaleString()} XP</span></div><button class="new-code" id="new-code" title="Pair with a new code">New code</button></div><div class="bar"><i style="width:${progress}%"></i></div><section class="section"><h3>ACTIVE QUESTS</h3><div class="quests">${quests}</div></section><section class="section"><h3>GLOBAL LEADERBOARD</h3>${shown.map((entry) => `<div class="row"><span class="rank">#${entry.rank}</span><img src="${entry.avatarUrl ?? ""}"><span class="name">${clean(entry.login)}</span><span class="xp">${entry.totalXp.toLocaleString()}</span></div>`).join("")}</section><a class="footer" href="${dashboard}" target="_blank">Open dashboard ↗</a>`;
+  app.querySelector("#new-code")?.addEventListener("click", () => drawLogin("", true));
 }
 
 const clean = (value: string) => value.replace(/[&<>"']/g, "");

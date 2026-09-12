@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 const runs = [
   { env: {} },
   { env: { QL_BUILD_TARGET: "content" } },
+  { env: { QL_BUILD_TARGET: "content", QL_CONTENT_ENTRY: "dashboard-sync" } },
 ];
 
 for (const { env } of runs) {

@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 // must be a self-contained IIFE. Background (declared type: "module") and the
 // popup HTML can stay as ES modules.
 const isContentBuild = process.env.QL_BUILD_TARGET === "content";
+const isDashboardSync = process.env.QL_CONTENT_ENTRY === "dashboard-sync";
 
 export default defineConfig(
   isContentBuild
@@ -15,7 +16,9 @@ export default defineConfig(
           outDir: "../dist",
           emptyOutDir: false,
           rollupOptions: {
-            input: { "content/index": resolve(__dirname, "src/content/index.ts") },
+            input: isDashboardSync
+              ? { "content/dashboard-sync": resolve(__dirname, "src/content/dashboardSync.ts") }
+              : { "content/index": resolve(__dirname, "src/content/index.ts") },
             output: {
               format: "iife",
               entryFileNames: "[name].js",
