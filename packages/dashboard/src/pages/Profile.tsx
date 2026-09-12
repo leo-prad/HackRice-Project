@@ -40,8 +40,7 @@ export default function Profile() {
       <div className="flex flex-col gap-7 sm:flex-row sm:items-center">
         <img className="h-24 w-24 rounded-3xl border-2 border-acid/50 bg-panel shadow-acid" src={profile.user.avatarUrl ?? ""} alt="" />
         <div className="flex-1">
-          <p className="font-mono text-[10px] font-bold tracking-[.2em] text-acid">PLAYER</p>
-          <h1 className="mt-1 text-4xl font-black tracking-tight">{profile.user.githubLogin.toUpperCase()}</h1>
+          <h1 className="text-4xl font-black tracking-tight">{profile.user.githubLogin.toUpperCase()}</h1>
           {profile.user.profileSummary && (
             <p className="mt-2 max-w-xl text-sm text-slate-400">{profile.user.profileSummary}</p>
           )}

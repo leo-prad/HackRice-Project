@@ -9,6 +9,24 @@ const pick = <T,>(items: T[]) => items[Math.floor(Math.random() * items.length)]
 export const questsRouter = Router();
 questsRouter.use(requireAuth);
 
+/** Existing unused rolls for the current user, so the dashboard can hydrate locked multipliers on load. */
+questsRouter.get("/rolls", async (req, res, next) => {
+  try {
+    const result = await query<{ id: string; issue_node_id: string; risk_multiplier: number }>(
+      "SELECT id, issue_node_id, risk_multiplier FROM quest_game_offers WHERE user_id=$1 AND used_at IS NULL",
+      [req.session!.userId],
+    );
+    res.json({
+      rolls: result.rows.map((row) => ({
+        issueNodeId: row.issue_node_id,
+        offerId: String(row.id),
+        multiplier: Number(row.risk_multiplier),
+        jackpot: Number(row.risk_multiplier) === 3,
+      })),
+    });
+  } catch (error) { next(error); }
+});
+
 questsRouter.post("/recommend", async (req, res, next) => {
   try {
     const repoFullName = typeof req.body?.repoFullName === "string" && /^[\w.-]+\/[\w.-]+$/.test(req.body.repoFullName)
