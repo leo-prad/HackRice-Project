@@ -1,5 +1,5 @@
-import type { QuestRecommendation, UserProfile } from "@questline/shared";
-import { ArrowRight, RefreshCw, Swords } from "lucide-react";
+import type { QuestRecommendation, RiskRollOffer, UserProfile } from "@questline/shared";
+import { ArrowRight, Dices, RefreshCw, Swords } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { api } from "../lib/api";
@@ -7,6 +7,7 @@ import { api } from "../lib/api";
 export default function NextQuest() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [recommendations, setRecommendations] = useState<QuestRecommendation[]>([]);
+  const [rolls, setRolls] = useState<Record<string, RiskRollOffer>>({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -28,6 +29,15 @@ export default function NextQuest() {
   };
 
   useEffect(() => { void load(); }, []);
+
+  const roll = async (issueNodeId: string) => {
+    const result = await api<RiskRollOffer>(`/quests/${issueNodeId}/risk-roll`, { method: "POST" });
+    setRolls((current) => ({ ...current, [issueNodeId]: result }));
+  };
+  const claim = async (issueNodeId: string, issueUrl: string) => {
+    await api("/claims", { method: "POST", body: JSON.stringify({ issueNodeId, offerId: rolls[issueNodeId]?.offerId }) });
+    window.open(issueUrl, "_blank", "noopener,noreferrer");
+  };
 
   if (profile && !profile.user.goals?.length) return <Navigate to="/onboard" replace />;
   if (error && !recommendations.length) return <p className="p-20 text-center text-red-400">{error}</p>;
@@ -56,6 +66,7 @@ export default function NextQuest() {
       <div className="mt-12 grid gap-5 lg:grid-cols-3">
         {recommendations.map((item) => {
           const quest = item.quest;
+          const rolled = rolls[quest.issueNodeId];
           return (
             <article
               key={quest.issueNodeId}
@@ -77,14 +88,28 @@ export default function NextQuest() {
                   Potential reward: {item.potentialReward}
                 </p>
               )}
-              <a
-                href={quest.issueUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-auto flex items-center justify-between rounded-xl bg-acid px-4 py-3 font-extrabold text-ink"
+              <div className="mt-4 rounded-xl border border-violet/30 bg-violet/[.07] p-3">
+                <p className="font-mono text-[10px] font-bold tracking-[.14em] text-violet-200">🎲 RISK ROLL</p>
+                <p className="mt-1 text-xs text-slate-400">Roll before claiming: 0.5×, 1×, 1.5×, 2×, or 3× JACKPOT.</p>
+                {rolled ? (
+                  <p className="mt-2 font-mono text-sm font-bold text-acid">
+                    Locked at {rolled.multiplier}× · Potential {Math.floor(quest.xp * rolled.multiplier).toLocaleString()} XP
+                  </p>
+                ) : (
+                  <button
+                    onClick={() => void roll(quest.issueNodeId)}
+                    className="mt-3 rounded-lg border border-violet/50 px-3 py-2 text-xs font-bold text-violet-100 hover:bg-violet/20"
+                  >
+                    <Dices size={14} className="mr-1 inline" />Roll for XP
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => void claim(quest.issueNodeId, quest.issueUrl)}
+                className="mt-5 flex items-center justify-between rounded-xl bg-acid px-4 py-3 font-extrabold text-ink"
               >
-                Start quest <ArrowRight size={16} />
-              </a>
+                Claim quest {rolled && `· ${rolled.multiplier}×`} <ArrowRight size={16} />
+              </button>
             </article>
           );
         })}

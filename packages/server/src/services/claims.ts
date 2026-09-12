@@ -6,6 +6,8 @@ export interface ClaimRow {
   id: number; user_id: number; issue_node_id: string; status: ClaimStatus;
   pr_url: string | null; pr_number: number | null; pr_repo: string | null;
   xp_awarded: number; claimed_at: Date; submitted_at: Date | null; merged_at: Date | null;
+  risk_multiplier?: number;
+  double_choice?: "take" | "risk" | null; double_won?: boolean | null; double_bonus_awarded?: number;
   completion_json?: QuestCompletion | null;
 }
 
@@ -18,6 +20,10 @@ export const toClaim = (row: ClaimRow, score?: IssueScore): Claim => ({
   prNumber: row.pr_number,
   prRepo: row.pr_repo,
   xpAwarded: row.xp_awarded,
+  riskMultiplier: Number(row.risk_multiplier ?? 1),
+  doubleChoice: row.double_choice ?? undefined,
+  doubleWon: row.double_won,
+  doubleBonusAwarded: Number(row.double_bonus_awarded ?? 0),
   claimedAt: row.claimed_at.toISOString(),
   submittedAt: row.submitted_at ? row.submitted_at.toISOString() : null,
   mergedAt: row.merged_at ? row.merged_at.toISOString() : null,
