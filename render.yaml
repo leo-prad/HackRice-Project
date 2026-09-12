@@ -1,9 +1,3 @@
-databases:
-  - name: questline-db
-    plan: free
-    databaseName: questline
-    user: questline
-
 services:
   - type: web
     name: questline-api
@@ -17,13 +11,9 @@ services:
       - key: NODE_VERSION
         value: 20
       - key: DATABASE_URL
-        fromDatabase:
-          name: questline-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: PORT
-        value: 8787
       - key: DASHBOARD_URL
         sync: false
       - key: GITHUB_CLIENT_ID
