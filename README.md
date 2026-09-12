@@ -1,9 +1,12 @@
 # ENV:
-# Server
 PORT=8787
+
 DATABASE_URL=postgresql://postgres:[HackRice1201]@db.ueqevqwtnyobezugwief.supabase.co:5432/postgres
+
 JWT_SECRET=b7710fd880d83cf1beb078b0a2ebc87776e346cc8307acdba63c49e5e4ce224a
+
 API_BASE_URL=http://localhost:8787
+
 DASHBOARD_URL=http://localhost:5173
 
 # GitHub OAuth app
