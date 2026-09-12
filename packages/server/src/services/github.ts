@@ -34,6 +34,7 @@ export interface GitHubIssue {
 export interface GitHubRepo { full_name: string; stargazers_count: number; open_issues_count: number; private: boolean; owner: { id: number; type?: string } }
 export interface GitHubComment { body: string | null }
 export interface GitHubPull { user: { id: number; login: string }; merged: boolean; state: string }
+export interface GitHubReview { state: string }
 
 export async function getIssueBundle(owner: string, repo: string, number: number, token?: string) {
   const [issue, repository, comments] = await Promise.all([
@@ -47,6 +48,9 @@ export async function getIssueBundle(owner: string, repo: string, number: number
 
 export const getPull = (owner: string, repo: string, number: number, token?: string) =>
   githubFetch<GitHubPull>(`/repos/${owner}/${repo}/pulls/${number}`, token);
+
+export const getPullReviews = (owner: string, repo: string, number: number, token?: string) =>
+  githubFetch<GitHubReview[]>(`/repos/${owner}/${repo}/pulls/${number}/reviews?per_page=100`, token);
 
 // Cheap contributor probe: ask for two, so we can tell "single-contributor"
 // from "many" without paginating the full list. Anonymous view for public

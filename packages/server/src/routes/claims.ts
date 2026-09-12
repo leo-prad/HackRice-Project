@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../auth/jwt.js";
 import { query } from "../db.js";
-import { getPull, parsePullUrl } from "../services/github.js";
+import { getPull, getPullReviews, parsePullUrl } from "../services/github.js";
 import { awardMergedClaim, awardSubmittedClaim, markClaimClosed } from "../services/xp.js";
 import { refreshSubmittedClaimsForUser } from "../services/claimRefresh.js";
 
@@ -71,6 +71,11 @@ claimsRouter.post("/:id/refresh", async (req, res, next) => {
       if (pull.state === "closed") {
         const updated = await markClaimClosed(Number(claim.id), req.session!.userId);
         return res.json({ claim: updated, xpAwarded: 0 });
+      }
+      const reviews = await getPullReviews(parsed.owner, parsed.repo, parsed.number, tokenRow.rows[0].github_token).catch(() => []);
+      if (reviews.some((r) => r.state === "APPROVED")) {
+        const result = await awardMergedClaim(Number(claim.id), req.session!.userId);
+        return res.json(result);
       }
       return res.json({ claim, xpAwarded: 0 });
     } catch (error) {

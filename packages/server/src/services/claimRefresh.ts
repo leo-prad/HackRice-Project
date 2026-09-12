@@ -1,5 +1,5 @@
 import { query } from "../db.js";
-import { getPull, parsePullUrl } from "./github.js";
+import { getPull, getPullReviews, parsePullUrl } from "./github.js";
 import { awardMergedClaim, markClaimClosed } from "./xp.js";
 
 // Poll every submitted claim's PR state and settle it. Merged claims release
@@ -23,6 +23,10 @@ export async function refreshSubmittedClaimsForUser(userId: number) {
         const pull = await getPull(parsed.owner, parsed.repo, parsed.number, token);
         if (pull.merged) { await awardMergedClaim(row.id, userId); merged += 1; }
         else if (pull.state === "closed") { await markClaimClosed(row.id, userId); closed += 1; }
+        else {
+          const reviews = await getPullReviews(parsed.owner, parsed.repo, parsed.number, token).catch(() => []);
+          if (reviews.some((r) => r.state === "APPROVED")) { await awardMergedClaim(row.id, userId); merged += 1; }
+        }
       } catch (error) {
         // A deleted PR (or the whole repo going away) 404s; treat as closed.
         if (error instanceof Error && /GitHub 404/.test(error.message)) {

@@ -37,11 +37,14 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, profile
 
   const draw = () => {
     const progress = profile ? Math.min(100, profile.xpIntoLevel / profile.xpForNextLevel * 100) : 0;
-    const finished = claim && (claim.status === "submitted" || claim.status === "merged" || claim.status === "closed");
+    const finished = claim && (claim.status === "merged" || claim.status === "closed");
     const awarded = claim ? (claim.xpAwarded ?? (claim as Claim & { xp_awarded?: number }).xp_awarded ?? 0) : 0;
+    // While the PR sits in review, keep the big number as the bounty on the
+    // line so the user still sees what's on the table; once the claim
+    // settles, the big number becomes the actual XP that landed.
     const bigValue = finished ? awarded : score.xp;
     const kicker = !claim ? "QUEST BOUNTY"
-      : claim.status === "submitted" ? "XP HELD"
+      : claim.status === "submitted" ? "AWAITING APPROVAL"
       : claim.status === "merged" ? "XP EARNED"
       : claim.status === "closed" ? "XP EARNED"
       : "QUEST BOUNTY";
@@ -83,7 +86,8 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, profile
           const response = await api<{ claim: Claim; xpAwarded: number }>(`/claims/${claim!.id}/submit`, { method: "POST", body: JSON.stringify({ prUrl }) });
           claim = response.claim;
           profile = await api<UserProfile>("/users/me");
-          await playXpGain(response.xpAwarded, profile);
+          if (response.xpAwarded > 0) await playXpGain(response.xpAwarded, profile);
+          else showToast("PR submitted — XP will unlock once a maintainer approves it.");
           draw();
         }));
       }
@@ -107,9 +111,22 @@ function actionMarkup(claim: Claim | null) {
   if (!claim) return '<button class="ql-primary">Claim quest <span>→</span></button>';
   if (claim.status === "claimed") return '<button class="ql-primary">Link your PR <span>→</span></button>';
   const awarded = claim.xpAwarded ?? (claim as Claim & { xp_awarded?: number }).xp_awarded ?? 0;
-  if (claim.status === "submitted") return `<button class="ql-primary ql-review" disabled>⏳ In Review <span>+${awarded.toLocaleString()} XP</span></button>`;
+  if (claim.status === "submitted") return `<button class="ql-primary ql-review" disabled>⏳ In Review <span>Awaiting approval</span></button>`;
   if (claim.status === "closed") return `<button class="ql-primary ql-complete" disabled>✕ PR Closed <span>+${awarded.toLocaleString()} XP</span></button>`;
   return `<button class="ql-primary ql-complete" disabled>✓ Complete <span>+${awarded.toLocaleString()} XP</span></button>`;
+}
+
+export function showToast(message: string) {
+  const toast = document.createElement("div");
+  toast.className = "ql-toast";
+  toast.dataset.questlineRoot = "1";
+  toast.textContent = message;
+  document.body.append(toast);
+  requestAnimationFrame(() => toast.classList.add("ql-toast-in"));
+  setTimeout(() => {
+    toast.classList.remove("ql-toast-in");
+    setTimeout(() => toast.remove(), 400);
+  }, 3600);
 }
 
 export async function playXpGain(amount: number, after: UserProfile) {

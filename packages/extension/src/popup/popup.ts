@@ -95,7 +95,12 @@ async function triggerGainOnActiveTab(amount: number, after: UserProfile) {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id || !tab.url?.startsWith("https://github.com/")) return;
-    await chrome.tabs.sendMessage(tab.id, { type: "questline:xp-gain", amount, after });
+    await chrome.tabs.sendMessage(tab.id, {
+      type: "questline:xp-gain",
+      amount,
+      after,
+      toast: amount > 0 ? undefined : "PR submitted — XP will unlock once a maintainer approves it.",
+    });
   } catch {
     // Content script isn't on this tab, nothing to do.
   }
