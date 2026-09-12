@@ -1,5 +1,6 @@
 import type { Claim, IssueScore } from "@questline/shared";
 import { api } from "../lib/api";
+import { dashboardPath } from "../lib/config";
 import { storage } from "../lib/storage";
 
 type ClaimRecord = Claim & { issue_node_id?: string };
@@ -138,7 +139,7 @@ function setPairRequired(action: IssueAction) {
   action.button.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    window.open(`${import.meta.env.VITE_DASHBOARD_URL || "http://localhost:5173"}/pair`, "_blank");
+    window.open(dashboardPath("/pair"), "_blank");
   });
 }
 
@@ -153,7 +154,7 @@ function wireAccept(action: IssueAction, score: IssueScore, initialClaim?: Claim
 
     const token = await storage.token();
     if (!token) {
-      window.open(`${import.meta.env.VITE_DASHBOARD_URL || "http://localhost:5173"}/pair`, "_blank");
+      window.open(dashboardPath("/pair"), "_blank");
       return;
     }
 
@@ -230,7 +231,7 @@ export async function mountIssueList() {
       if (!scoredUrls.has(issueUrl)) setLoadError(action);
     }
   } catch (error) {
-    console.warn("GitQuest could not rate this quest board", error);
+    console.warn("Questline could not rate this quest board", error);
     actions.forEach((action) => setLoadError(action, error));
   } finally {
     actions.forEach((_, issueUrl) => pending.delete(issueUrl));

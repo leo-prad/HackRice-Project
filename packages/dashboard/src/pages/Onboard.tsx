@@ -79,7 +79,7 @@ export default function Onboard() {
       <p className="font-mono text-[10px] font-bold tracking-[.22em] text-acid">PLAYER SETUP</p>
       <h1 className="mt-4 text-5xl font-black tracking-[-.05em]">What do you want to get better at?</h1>
       <p className="mt-4 max-w-xl text-slate-400">
-        Pick a growth path. GitQuest will import your GitHub experience and build a starter skill tree around those goals.
+        Pick a growth path. Questline will import your GitHub experience and build a starter skill tree around those goals.
       </p>
       <div className="mt-10 grid gap-3 sm:grid-cols-2">
         {GROWTH_GOALS.map((goal) => {

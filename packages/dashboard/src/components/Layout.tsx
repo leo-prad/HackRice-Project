@@ -10,7 +10,7 @@ export default function Layout() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <Link to="/" className="flex items-center gap-3 font-black tracking-tight">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-acid text-lg text-ink">Q</span>
-            GITQUEST
+            QUESTLINE
             <span className="hidden rounded-full border border-acid/20 bg-acid/5 px-2 py-1 font-mono text-[9px] text-acid sm:inline">BETA</span>
           </Link>
           <nav className="flex items-center gap-1 text-sm text-slate-400">

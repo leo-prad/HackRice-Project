@@ -14,7 +14,7 @@ export default function Login() {
             GitHub already has millions of <span className="text-glow text-acid">quests.</span>
           </h1>
           <p className="mt-7 max-w-xl text-lg leading-8 text-slate-400">
-            GitQuest is an AI game engine for open source. Live issues become rated quests. Real merges become XP, skills, and a path to harder work.
+            Questline is an AI game engine for open source. Live issues become rated quests. Real merges become XP, skills, and a path to harder work.
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
             <a href={`${API_BASE}/auth/github`} className="flex items-center gap-2 rounded-xl bg-acid px-5 py-3.5 font-extrabold text-ink shadow-acid transition hover:-translate-y-0.5 hover:brightness-110">

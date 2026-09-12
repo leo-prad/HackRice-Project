@@ -1,4 +1,4 @@
--- GitQuest engine: structured analysis, deterministic difficulty/XP/rarity, skills, goals, achievements.
+-- Questline engine: structured analysis, deterministic difficulty/XP/rarity, skills, goals, achievements.
 
 ALTER TABLE issue_scores
   ADD COLUMN IF NOT EXISTS quest_key TEXT,

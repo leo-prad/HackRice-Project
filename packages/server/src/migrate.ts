@@ -37,7 +37,7 @@ try {
       client.release();
     }
   }
-  console.log("GitQuest Tiger Cloud migrations complete.");
+  console.log("Questline Tiger Cloud migrations complete.");
 } catch (error) {
   const err = error as { code?: string; message?: string };
   console.error("Migration failed:", err.message ?? error);

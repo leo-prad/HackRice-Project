@@ -3,7 +3,7 @@ import type { AnalyzedSkill, QuestAnalysis } from "@questline/shared";
 import type { GitHubComment, GitHubIssue, GitHubRepo } from "./github.js";
 import { issueLabels } from "./github.js";
 
-const SYSTEM_PROMPT = `You analyze open source GitHub issues for GitQuest, a game engine that turns issues into quests.
+const SYSTEM_PROMPT = `You analyze open source GitHub issues for Questline, a game engine that turns issues into quests.
 
 Rate the work required to close the issue on five independent 0-10 axes:
 - technical_complexity: depth of engineering skill required. 1 = docs typo, 5 = multi-file bug fix, 9 = race condition or memory corruption.

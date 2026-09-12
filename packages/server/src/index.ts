@@ -26,6 +26,6 @@ app.use((error: any, _req: express.Request, res: express.Response, _next: expres
 
 const port = Number(process.env.PORT) || 8787;
 app.listen(port, () => {
-  console.log(`GitQuest API ready on http://localhost:${port}`);
+  console.log(`Questline API ready on http://localhost:${port}`);
   startMergePolling();
 });

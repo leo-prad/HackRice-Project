@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "GitQuest",
+  "name": "Questline",
   "version": "0.1.0",
   "description": "Turn live GitHub issues into RPG-style coding quests.",
   "permissions": ["storage"],
