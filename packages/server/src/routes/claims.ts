@@ -19,9 +19,16 @@ claimsRouter.post("/", async (req, res, next) => {
     if (prior.rowCount && !reopenable.has(prior.rows[0].status)) {
       return res.status(409).json({ error: "You already have an active claim" });
     }
+    const offerId = typeof req.body?.offerId === "string" ? req.body.offerId : null;
+    const offer = offerId ? await query<{ risk_multiplier: number | null }>(
+      "UPDATE quest_game_offers SET used_at=now() WHERE id=$1 AND user_id=$2 AND issue_node_id=$3 AND used_at IS NULL RETURNING risk_multiplier",
+      [offerId, req.session!.userId, req.body.issueNodeId],
+    ) : null;
+    if (offerId && !offer?.rowCount) return res.status(409).json({ error: "That game offer is no longer available" });
+    const multiplier = Number(offer?.rows[0]?.risk_multiplier ?? 1);
     const result = prior.rowCount
-      ? await query<ClaimRow>("UPDATE claims SET status='claimed',pr_url=NULL,pr_number=NULL,pr_repo=NULL,xp_awarded=0,claimed_at=now(),submitted_at=NULL,merged_at=NULL,completion_json=NULL WHERE id=$1 RETURNING *", [prior.rows[0].id])
-      : await query<ClaimRow>("INSERT INTO claims (user_id,issue_node_id) VALUES ($1,$2) RETURNING *", [req.session!.userId, req.body.issueNodeId]);
+      ? await query<ClaimRow>("UPDATE claims SET status='claimed',pr_url=NULL,pr_number=NULL,pr_repo=NULL,xp_awarded=0,claimed_at=now(),submitted_at=NULL,merged_at=NULL,completion_json=NULL,risk_multiplier=$2 WHERE id=$1 RETURNING *", [prior.rows[0].id, multiplier])
+      : await query<ClaimRow>("INSERT INTO claims (user_id,issue_node_id,risk_multiplier) VALUES ($1,$2,$3) RETURNING *", [req.session!.userId, req.body.issueNodeId, multiplier]);
     const score = await getQuest(req.body.issueNodeId);
     res.status(201).json({ claim: toClaim(result.rows[0], score ?? undefined) });
   } catch (error: any) {
@@ -80,6 +87,28 @@ claimsRouter.post("/:id/abandon", async (req, res, next) => {
     );
     if (!result.rowCount) return res.status(404).json({ error: "Active claim not found" });
     res.json({ claim: toClaim(result.rows[0]) });
+  } catch (error) { next(error); }
+});
+
+claimsRouter.post("/:id/double", async (req, res, next) => {
+  try {
+    const choice = req.body?.choice === "risk" ? "risk" : req.body?.choice === "take" ? "take" : null;
+    if (!choice) return res.status(400).json({ error: "Choose take or risk" });
+    const result = await query<ClaimRow & { user_id: number }>(
+      `SELECT * FROM claims WHERE id=$1 AND user_id=$2 AND status='merged' AND double_choice IS NULL`,
+      [req.params.id, req.session!.userId],
+    );
+    if (!result.rowCount) return res.status(409).json({ error: "This reward has already been settled" });
+    const claim = result.rows[0];
+    const won = choice === "risk" && Math.random() < 0.5;
+    const bonus = won ? claim.xp_awarded : 0;
+    const settled = await query<ClaimRow>("UPDATE claims SET double_choice=$1,double_won=$2,double_bonus_awarded=$3 WHERE id=$4 AND double_choice IS NULL RETURNING *", [choice, won, bonus, claim.id]);
+    if (!settled.rowCount) return res.status(409).json({ error: "This reward has already been settled" });
+    if (bonus) {
+      await query("INSERT INTO xp_events (user_id,claim_id,issue_node_id,delta,kind,note) VALUES ($1,$2,$3,$4,'double_bonus','Double or Nothing jackpot')", [claim.user_id, claim.id, claim.issue_node_id, bonus]);
+      await query("UPDATE users SET total_xp=total_xp+$1,last_active_at=now() WHERE id=$2", [bonus, claim.user_id]);
+    }
+    res.json({ claim: toClaim(settled.rows[0]), won, bonus });
   } catch (error) { next(error); }
 });
 

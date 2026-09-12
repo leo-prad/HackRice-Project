@@ -139,11 +139,17 @@ export interface Claim {
   prNumber: number | null;
   prRepo: string | null;
   xpAwarded: number;
+  riskMultiplier: number;
+  doubleChoice?: "take" | "risk";
+  doubleWon?: boolean | null;
+  doubleBonusAwarded?: number;
   claimedAt: string;
   submittedAt: string | null;
   mergedAt: string | null;
   score?: IssueScore;
 }
+
+export interface RiskRollOffer { offerId: string; multiplier: number; jackpot: boolean; }
 
 export interface XpEvent {
   id: number;

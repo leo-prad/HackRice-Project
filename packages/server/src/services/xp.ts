@@ -9,7 +9,7 @@ interface LockedClaim {
   id: number; user_id: number; issue_node_id: string; status: string;
   pr_repo: string | null; pr_number: number | null; claimed_at: Date;
   completion_json: QuestCompletion | null;
-  xp: number; rarity: Rarity; title: string; quest_key: string; repo_owner_id: string;
+  xp: number; rarity: Rarity; title: string; quest_key: string; repo_owner_id: string; risk_multiplier: number;
   github_id: string; total_xp: number; created_at: Date;
 }
 
@@ -60,7 +60,7 @@ export async function completeClaim(claimId: number, note: string): Promise<Ques
   return withTransaction(async (client) => {
     const locked = await client.query<LockedClaim>(
       `SELECT c.id, c.user_id, c.issue_node_id, c.status, c.pr_repo, c.pr_number, c.claimed_at, c.completion_json,
-              s.xp, s.rarity, s.title, s.quest_key, s.repo_owner_id,
+              s.xp, s.rarity, s.title, s.quest_key, s.repo_owner_id, c.risk_multiplier,
               u.github_id, u.total_xp, u.created_at
        FROM claims c
        JOIN issue_scores s ON s.issue_node_id = c.issue_node_id
@@ -80,7 +80,8 @@ export async function completeClaim(claimId: number, note: string): Promise<Ques
       throw Object.assign(new Error("PR must be linked and awaiting approval before XP can be released"), { status: 409 });
     }
 
-    const multiplier = String(claim.github_id) === String(claim.repo_owner_id) ? 0.25 : 1;
+    const selfOwned = String(claim.github_id) === String(claim.repo_owner_id);
+    const multiplier = (selfOwned ? 0.25 : 1) * Number(claim.risk_multiplier || 1);
     const award = Math.max(0, Math.floor(claim.xp * multiplier));
     const before = levelProgress(claim.total_xp);
     const rankBefore = await globalRank(client, claim.total_xp, claim.created_at);
@@ -88,7 +89,7 @@ export async function completeClaim(claimId: number, note: string): Promise<Ques
     await client.query("UPDATE claims SET status='merged', xp_awarded=$1, merged_at=now() WHERE id=$2", [award, claimId]);
     await client.query(
       "INSERT INTO xp_events (user_id, claim_id, issue_node_id, delta, kind, note) VALUES ($1,$2,$3,$4,'claim_complete',$5)",
-      [claim.user_id, claimId, claim.issue_node_id, award, multiplier === 0.25 ? `${note} (25% self-owned repository award)` : note],
+      [claim.user_id, claimId, claim.issue_node_id, award, selfOwned ? `${note} (25% self-owned repository award)` : note],
     );
     const updatedUser = await client.query<{ total_xp: number }>(
       "UPDATE users SET total_xp = total_xp + $1, last_active_at = now() WHERE id = $2 RETURNING total_xp",

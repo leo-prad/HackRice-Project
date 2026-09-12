@@ -22,6 +22,12 @@ export default function Profile() {
   }, []);
   if (error) return <p className="p-20 text-center text-red-400">{error}</p>;
   if (!profile) return <p className="p-20 text-center font-mono text-xs text-slate-600">LOADING PLAYER DATA…</p>;
+
+  const double = async (claimId: number, choice: "take" | "risk") => {
+    await api(`/claims/${claimId}/double`, { method: "POST", body: JSON.stringify({ choice }) });
+    setProfile(await api<UserProfile>("/users/me"));
+  };
+
   if (!profile.user.goals?.length) return <Navigate to="/onboard" replace />;
 
   const progress = Math.min(100, (profile.xpIntoLevel / Math.max(1, profile.xpForNextLevel)) * 100);
@@ -114,6 +120,16 @@ export default function Profile() {
       <div className="mt-14 grid gap-8 lg:grid-cols-[1.4fr_.6fr]">
         <section>
           <h2 className="mb-4 text-lg font-bold">Quest log</h2>
+          {profile.claims.filter((claim) => claim.status === "merged" && !claim.doubleChoice).map((claim) => (
+            <div key={`double-${claim.id}`} className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/[.07] p-4">
+              <p className="font-mono text-[10px] font-bold tracking-[.16em] text-amber-200">💰 DOUBLE OR NOTHING</p>
+              <p className="mt-1 text-sm text-slate-300">You received {claim.xpAwarded.toLocaleString()} XP. Keep it, or risk an equal bonus to double the reward.</p>
+              <div className="mt-3 flex gap-2">
+                <button onClick={() => void double(claim.id, "take")} className="rounded-lg bg-acid px-3 py-2 text-xs font-black text-ink">Take XP</button>
+                <button onClick={() => void double(claim.id, "risk")} className="rounded-lg border border-amber-200/50 px-3 py-2 text-xs font-black text-amber-100">🎲 Risk 50/50</button>
+              </div>
+            </div>
+          ))}
           <div className="overflow-hidden rounded-2xl border border-white/[.08] bg-panel">
             {profile.claims.length ? profile.claims.map((claim) => {
               const quest = claim.score;
