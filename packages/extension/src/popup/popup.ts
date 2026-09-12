@@ -1,6 +1,5 @@
 import type { LeaderboardEntry, UserProfile } from "@questline/shared";
-import { api } from "../lib/api";
-import { storage } from "../lib/storage";
+import { popupApi as api, popupStorage as storage } from "./api";
 
 const app = document.querySelector<HTMLElement>("#app")!;
 const dashboard = import.meta.env.VITE_DASHBOARD_URL || "http://localhost:5173";

@@ -1,25 +1,42 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
+import jwt from "jsonwebtoken";
+import type { SessionPayload } from "../auth/jwt.js";
 import { query } from "../db.js";
 import { scoreIssue } from "../services/scoring.js";
 
 export const issuesRouter = Router();
 
-issuesRouter.post("/score", async (req, res) => {
+async function viewerGithubToken(req: Request) {
+  const auth = req.headers.authorization?.replace(/^Bearer\s+/i, "");
+  if (!auth || !process.env.JWT_SECRET) return undefined;
+  try {
+    const session = jwt.verify(auth, process.env.JWT_SECRET) as SessionPayload;
+    const result = await query<{ github_token: string }>("SELECT github_token FROM users WHERE id=$1", [session.userId]);
+    return result.rows[0]?.github_token;
+  } catch {
+    return undefined;
+  }
+}
+
+issuesRouter.post("/score", async (req, res, next) => {
   const issueUrls = req.body?.issueUrls;
   if (!Array.isArray(issueUrls) || issueUrls.some((url) => typeof url !== "string") || issueUrls.length > 30) {
     return res.status(400).json({ error: "issueUrls must contain at most 30 URLs" });
   }
-  let cursor = 0;
-  const scores: unknown[] = [];
-  const worker = async () => {
-    while (cursor < issueUrls.length) {
-      const url = issueUrls[cursor++];
-      try { scores.push(await scoreIssue(url)); }
-      catch (error) { console.error(`Could not score ${url}`, error); }
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(5, issueUrls.length) }, worker));
-  res.json({ scores });
+  try {
+    const githubToken = await viewerGithubToken(req);
+    let cursor = 0;
+    const scores: unknown[] = [];
+    const worker = async () => {
+      while (cursor < issueUrls.length) {
+        const url = issueUrls[cursor++];
+        try { scores.push(await scoreIssue(url, githubToken)); }
+        catch (error) { console.error(`Could not score ${url}`, error); }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(5, issueUrls.length) }, worker));
+    res.json({ scores });
+  } catch (error) { next(error); }
 });
 
 issuesRouter.get("/:nodeId", async (req, res, next) => {

@@ -119,7 +119,7 @@ Create one OAuth App at [GitHub Developer Settings → OAuth Apps](https://githu
 
 - Homepage URL: `http://localhost:5173`
 - Authorization callback URL: `http://localhost:8787/auth/github/callback`
-- Scopes requested by Questline: `read:user`, `public_repo`
+- Scopes requested by Questline: `read:user`, `repo` (required for private repository issues)
 
 After signing in, open `/pair`, copy the one-time code, and paste it into the extension popup.
 

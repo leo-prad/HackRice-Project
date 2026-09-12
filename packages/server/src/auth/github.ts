@@ -7,7 +7,7 @@ export function oauthUrl() {
   const params = new URLSearchParams({
     client_id: process.env.GITHUB_CLIENT_ID ?? "",
     redirect_uri: process.env.GITHUB_OAUTH_CALLBACK ?? "",
-    scope: "read:user public_repo",
+    scope: "read:user repo",
   });
   return `https://github.com/login/oauth/authorize?${params}`;
 }
