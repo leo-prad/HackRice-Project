@@ -1,7 +1,6 @@
 import type { Claim, IssueScore, QuestCompletion, UserProfile } from "@questline/shared";
-import { isBossRarity, rarityLabel, roman } from "@questline/shared";
+import { roman } from "@questline/shared";
 import { api } from "../lib/api";
-import { rarityClass } from "../lib/rarity";
 import { storage } from "../lib/storage";
 
 const DASHBOARD = import.meta.env.VITE_DASHBOARD_URL || "http://localhost:5173";
@@ -27,6 +26,11 @@ export async function mountIssueDetail() {
       const details = await api<{ claim: Claim | null }>(`/issues/${encodeURIComponent(score.issueNodeId)}`);
       claim = details.claim;
       profile = await api<UserProfile>("/users/me");
+      // Opportunistic settle if a PR is already approved/merged.
+      if (claim?.status === "submitted") {
+        const refreshed = await api<SubmitResponse>(`/claims/${claim.id}/refresh`, { method: "POST" }).catch(() => null);
+        if (refreshed) claim = refreshed.claim;
+      }
     } catch { /* Signed-out visitors still see the quest. */ }
     renderCard(score, claim, profile);
   } catch (error) { console.warn("GitQuest could not mount the quest card", error); }
@@ -35,7 +39,7 @@ export async function mountIssueDetail() {
 
 async function renderCard(score: IssueScore, initialClaim: Claim | null, initialProfile: UserProfile | null) {
   const card = document.createElement("aside");
-  card.className = `ql-card ${rarityClass(score.rarity)}`;
+  card.className = "ql-card";
   card.dataset.questline = "1";
   card.dataset.questlineRoot = "1";
   card.dataset.questlineCard = "1";
@@ -43,23 +47,25 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, initial
 
   let claim = initialClaim;
   let profile = initialProfile;
-  const boss = isBossRarity(score.rarity);
-  const kicker = boss ? "BOSS QUEST" : `${rarityLabel(score.rarity)} QUEST`;
 
   const draw = () => {
     const progress = profile ? Math.min(100, (profile.xpIntoLevel / Math.max(1, profile.xpForNextLevel)) * 100) : 0;
+    const finished = claim?.status === "merged";
+    const awarded = claim?.xpAwarded ?? 0;
+    const bigValue = finished && awarded > 0 ? awarded : score.xp;
+    const kicker = !claim || claim.status === "abandoned" || claim.status === "closed"
+      ? "QUEST BOUNTY"
+      : claim.status === "submitted" ? "AWAITING APPROVAL"
+      : claim.status === "merged" ? "XP EARNED"
+      : "QUEST BOUNTY";
+
     card.innerHTML = `
       <button class="ql-collapse" aria-label="Collapse GitQuest">⌄</button>
-      <div class="ql-orb"><span>Q</span><b>${score.xp} XP</b></div>
+      <div class="ql-orb"><span>Q</span><b>${bigValue >= 1000 ? `${(bigValue / 1000).toFixed(bigValue % 1000 === 0 ? 0 : 1)}k` : bigValue}</b></div>
       <div class="ql-card-body">
         <div class="ql-kicker"><i></i>${kicker}</div>
         <h3 class="ql-title">${escapeHtml(score.title)}</h3>
-        <div class="ql-big-xp">${score.xp.toLocaleString()}<small> XP</small></div>
-        <div class="ql-difficulty">
-          <span>DIFFICULTY ${score.difficulty.toFixed(1)}</span>
-          <span class="ql-difficulty-track"><i style="width:${Math.min(100, score.difficulty * 10)}%"></i></span>
-          <span>/ 10</span>
-        </div>
+        <div class="ql-big-xp">${bigValue.toLocaleString()}<small> XP</small></div>
         <div class="ql-meta">${escapeHtml(score.repoFullName)} <span>#${score.issueNumber}</span> · open ${score.daysOpen} ${score.daysOpen === 1 ? "day" : "days"}</div>
         ${skillsMarkup(score)}
         ${objectivesMarkup(score)}
@@ -96,12 +102,20 @@ async function renderCard(score: IssueScore, initialClaim: Claim | null, initial
   };
 
   const wireAction = () => {
+    const refresh = card.querySelector<HTMLButtonElement>(".ql-refresh");
+    if (refresh && claim) {
+      refresh.addEventListener("click", () => run(refresh, async () => {
+        const response = await api<SubmitResponse>(`/claims/${claim!.id}/refresh`, { method: "POST" });
+        await settle(response);
+      }));
+    }
+
     const button = card.querySelector<HTMLButtonElement>(".ql-primary");
     if (!button || button.disabled) return;
     button.addEventListener("click", async () => {
       if (!profile) { window.open(`${DASHBOARD}/pair`, "_blank"); return; }
 
-      if (!claim || claim.status === "abandoned") {
+      if (!claim || claim.status === "abandoned" || claim.status === "closed") {
         await run(button, async () => {
           claim = (await api<{ claim: Claim }>("/claims", { method: "POST", body: JSON.stringify({ issueNodeId: score.issueNodeId }) })).claim;
           draw();
@@ -156,12 +170,18 @@ function objectivesMarkup(score: IssueScore) {
 }
 
 function actionMarkup(claim: Claim | null) {
-  if (!claim || claim.status === "abandoned") return '<button class="ql-primary">Claim quest <span>→</span></button>';
+  if (!claim || claim.status === "abandoned" || claim.status === "closed") {
+    const label = claim?.status === "closed" ? "Try again" : "Claim quest";
+    return `<button class="ql-primary">${label} <span>→</span></button>`;
+  }
   if (claim.status === "claimed") {
     return '<div class="ql-status"><b>QUEST ACCEPTED</b><span>Status: IN PROGRESS</span></div><button class="ql-primary">Link your PR <span>→</span></button>';
   }
+  if (claim.status === "submitted") {
+    return `<div class="ql-status"><b>IN REVIEW</b><span>XP unlocks when a maintainer approves or merges.</span></div><button class="ql-primary ql-review ql-refresh" type="button">Check approval status</button>`;
+  }
   const awarded = claim.xpAwarded ?? 0;
-  return `<div class="ql-status"><b>QUEST COMPLETE</b><span>PR linked and XP awarded.</span></div><button class="ql-primary ql-complete" disabled>✓ Complete <span>+${awarded.toLocaleString()} XP</span></button>`;
+  return `<div class="ql-status"><b>QUEST COMPLETE</b><span>PR approved — XP awarded.</span></div><button class="ql-primary ql-complete" disabled>✓ Complete <span>+${awarded.toLocaleString()} XP</span></button>`;
 }
 
 function footerMarkup(profile: UserProfile | null, progress: number) {
@@ -169,13 +189,9 @@ function footerMarkup(profile: UserProfile | null, progress: number) {
   return `<div><span>LEVEL ${profile.level}</span><strong>${profile.user.totalXp.toLocaleString()} XP</strong></div><div class="ql-progress"><i style="width:${progress}%"></i></div>`;
 }
 
-/**
- * The payoff screen. Every number here is computed server-side at award time, so the animation only
- * replays what the ledger already recorded.
- */
-async function playQuestComplete(completion: QuestCompletion, score: IssueScore) {
+async function playQuestComplete(completion: QuestCompletion, _score: IssueScore) {
   const overlay = document.createElement("div");
-  overlay.className = `ql-gain ${rarityClass(completion.rarity ?? score.rarity)}`;
+  overlay.className = "ql-gain";
   overlay.dataset.questlineRoot = "1";
   overlay.innerHTML = `
     <div class="ql-particles"></div>

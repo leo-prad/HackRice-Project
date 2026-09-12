@@ -11,7 +11,7 @@ GitQuest is an AI game engine for open source. It turns live GitHub issues into 
 - Full-screen Quest Complete animation: XP, level-up, skill-up, achievements, rank
 - Express API with GitHub OAuth, JWT pairing, Gemini structured analysis, and PostgreSQL
 - Deterministic difficulty and XP (`difficulty × 100`, rarity tiers, `scoring_version`)
-- Merge verification via GitHub API plus background polling — XP is never self-attested
+- Maintainer verification via GitHub API — XP unlocks only when a PR is approved or merged
 - Skill tree, 5 achievements, global leaderboard, and Find My Next Quest
 - Dashboard onboarding: pick a growth goal, then land on three recommended issues
 
@@ -155,7 +155,7 @@ SQL migrations live in `packages/server/src/migrations/` (`001_init.sql`, `002_g
 - `PUT /users/me/goals` (saves goals and runs GitHub→Gemini character seeding)
 - `GET /leaderboard`
 
-AI produces structured analysis only. The backend computes difficulty, XP, and rarity and stores them forever. Claiming does not pay XP. Linking a PR you authored that references the issue completes the quest and awards XP once.
+AI produces structured analysis only. The backend computes XP and stores it forever. Claiming does not pay XP. Linking a PR you authored that references the issue parks the claim in review. XP unlocks once when a maintainer approves or merges that PR.
 
 Onboarding imports GitHub experience into a starter skill tree (no `xp_events`). Find My Next Quest uses an AI Quest Matcher over the curated `DEMO_REPOS` worlds, with a deterministic fallback.
 
@@ -166,7 +166,8 @@ Onboarding imports GitHub experience into a starter skill tree (no `xp_events`).
 3. Open a seeded world, such as `https://github.com/expressjs/express/issues`. The list becomes a Quest Board.
 4. Open a high-XP issue. Claim it from the Quest Card.
 5. Open (or prepare) a PR that includes `Closes #<issue>` and is authored by the signed-in GitHub account.
-6. Link the PR on the card — Quest Complete fires immediately.
-7. Open `/complete` or **Find next quest**.
+6. Link the PR on the card — status becomes **In review** (no XP yet).
+7. Approve or merge the PR as a maintainer, then refresh / reopen the card — Quest Complete fires and XP awards once.
+8. Open `/complete` or **Find next quest**.
 
 XP is awarded once and is idempotent.

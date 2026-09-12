@@ -2,7 +2,7 @@ import type { Claim, QuestCompletion } from "@questline/shared";
 import { query } from "../db.js";
 import { toClaim, type ClaimRow } from "./claims.js";
 import { getQuest } from "./scoring.js";
-import { completeClaim } from "./xp.js";
+import { refreshSubmittedClaimsForUser } from "./claimRefresh.js";
 
 export interface SubmitResult {
   claim: Claim;
@@ -10,25 +10,33 @@ export interface SubmitResult {
   pending: string | null;
 }
 
-const reload = async (claimId: number): Promise<Claim> => {
+const reload = async (claimId: number): Promise<{ claim: Claim; completion: QuestCompletion | null }> => {
   const result = await query<ClaimRow>("SELECT * FROM claims WHERE id = $1", [claimId]);
   const row = result.rows[0];
   const score = await getQuest(row.issue_node_id);
-  return toClaim(row, score ?? undefined);
+  return {
+    claim: toClaim(row, score ?? undefined),
+    completion: row.completion_json ?? null,
+  };
 };
 
-/**
- * Completes a quest after a PR has been linked. No merge wait — author + issue reference
- * were already checked on submit.
- */
-export async function finalizeLinkedClaim(claimId: number, note: string): Promise<SubmitResult> {
-  const row = await query<ClaimRow>("SELECT * FROM claims WHERE id = $1", [claimId]);
-  if (!row.rowCount) throw Object.assign(new Error("Claim not found"), { status: 404 });
+/** Re-check GitHub for this user's submitted PRs, then return the requested claim. */
+export async function refreshClaim(claimId: number, userId: number): Promise<SubmitResult> {
+  const before = await query<ClaimRow>("SELECT * FROM claims WHERE id=$1 AND user_id=$2", [claimId, userId]);
+  if (!before.rowCount) throw Object.assign(new Error("Claim not found"), { status: 404 });
 
-  if (row.rows[0].status === "merged") {
-    return { claim: await reload(claimId), completion: row.rows[0].completion_json ?? null, pending: null };
+  await refreshSubmittedClaimsForUser(userId);
+  const loaded = await reload(claimId);
+
+  if (loaded.claim.status === "merged") {
+    return { ...loaded, pending: null };
   }
-
-  const completion = await completeClaim(claimId, note);
-  return { claim: await reload(claimId), completion, pending: null };
+  if (loaded.claim.status === "closed") {
+    return { ...loaded, completion: null, pending: "PR was closed without approval — you can re-claim." };
+  }
+  return {
+    ...loaded,
+    completion: null,
+    pending: "Still awaiting maintainer approval or merge.",
+  };
 }

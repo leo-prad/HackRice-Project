@@ -4,7 +4,6 @@ import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
-import { RARITY_STYLE, rarityLabel } from "../lib/rarity";
 
 export default function Complete() {
   const [completion, setCompletion] = useState<QuestCompletion | null>(null);
@@ -46,9 +45,6 @@ export default function Complete() {
   return (
     <div className="mx-auto max-w-xl px-5 py-20 text-center fade-up">
       <p className="font-mono text-[11px] font-bold tracking-[.28em] text-slate-500">QUEST COMPLETE</p>
-      <span className={`mt-5 inline-block rounded-full border px-3 py-1 font-mono text-[10px] font-bold ${RARITY_STYLE[completion.rarity]}`}>
-        {rarityLabel(completion.rarity)}
-      </span>
       <h1 className="mt-5 text-3xl font-black">{completion.questTitle}</h1>
       <p className="mt-2 font-mono text-xs text-slate-500">{completion.questKey}</p>
       <div className="mt-8 text-7xl font-black tracking-[-.06em] text-acid text-glow">+{xpShown.toLocaleString()} XP</div>
@@ -79,8 +75,8 @@ export default function Complete() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-panel px-4 py-3">
-      <b className="block font-mono text-[9px] tracking-[.16em] text-slate-500">{label}</b>
-      <strong className="mt-1 block text-lg">{value}</strong>
+      <p className="font-mono text-[9px] font-bold tracking-[.16em] text-slate-500">{label}</p>
+      <p className="mt-1 font-bold">{value}</p>
     </div>
   );
 }

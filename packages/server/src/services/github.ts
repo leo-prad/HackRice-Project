@@ -208,6 +208,11 @@ export async function getIssueBundle(owner: string, repo: string, number: number
 export const getPull = (owner: string, repo: string, number: number, token?: string) =>
   githubFetch<GitHubPull>(`/repos/${owner}/${repo}/pulls/${number}`, token);
 
+export interface GitHubReview { state: string }
+
+export const getPullReviews = (owner: string, repo: string, number: number, token?: string) =>
+  githubFetch<GitHubReview[]>(`/repos/${owner}/${repo}/pulls/${number}/reviews?per_page=100`, token);
+
 /** True when the PR title or body links the issue via `#12`, a closing keyword, or the full issue URL. */
 export function pullReferencesIssue(pull: GitHubPull, owner: string, repo: string, number: number): boolean {
   const text = `${pull.title}\n${pull.body ?? ""}`;

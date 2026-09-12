@@ -4,7 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 const TIER_LABELS: Record<RecommendationTier, string> = {
   safe: "SAFE BET",
   levelup: "LEVEL-UP QUEST",
-  boss: "BOSS FIGHT",
+  boss: "STRETCH QUEST",
 };
 
 const SYSTEM_PROMPT = `You are the GitQuest AI Quest Matcher.

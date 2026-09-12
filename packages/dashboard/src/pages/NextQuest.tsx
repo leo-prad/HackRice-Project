@@ -1,10 +1,8 @@
 import type { QuestRecommendation, UserProfile } from "@questline/shared";
-import { isBossRarity } from "@questline/shared";
 import { ArrowRight, RefreshCw, Swords } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { api } from "../lib/api";
-import { RARITY_GLOW, RARITY_STYLE, rarityLabel } from "../lib/rarity";
 
 export default function NextQuest() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -58,23 +56,15 @@ export default function NextQuest() {
       <div className="mt-12 grid gap-5 lg:grid-cols-3">
         {recommendations.map((item) => {
           const quest = item.quest;
-          const boss = isBossRarity(quest.rarity);
           return (
             <article
               key={quest.issueNodeId}
-              className={`flex flex-col rounded-3xl border border-white/[.08] bg-panel p-6 ${RARITY_GLOW[quest.rarity]}`}
+              className="flex flex-col rounded-3xl border border-white/[.08] bg-panel p-6"
             >
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-mono text-[10px] font-bold tracking-[.18em] text-acid">{item.tierLabel}</span>
-                <span className={`rounded-full border px-2.5 py-1 font-mono text-[9px] font-bold ${RARITY_STYLE[quest.rarity]}`}>
-                  {rarityLabel(quest.rarity)}
-                </span>
-              </div>
+              <span className="font-mono text-[10px] font-bold tracking-[.18em] text-acid">{item.tierLabel}</span>
               <h2 className="mt-5 text-xl font-black leading-snug">{quest.title}</h2>
-              <p className="mt-2 font-mono text-[11px] text-slate-500">
-                {quest.questKey} · {quest.difficulty.toFixed(1)} / 10
-              </p>
-              <div className={`mt-5 text-4xl font-black tracking-tight ${boss ? "text-rose-300" : "text-white"}`}>
+              <p className="mt-2 font-mono text-[11px] text-slate-500">{quest.questKey}</p>
+              <div className="mt-5 text-4xl font-black tracking-tight text-white">
                 {quest.xp.toLocaleString()} <span className="text-sm font-bold text-slate-500">XP</span>
               </div>
               <ul className="mt-6 space-y-2 text-sm text-slate-400">

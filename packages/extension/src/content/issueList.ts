@@ -1,7 +1,5 @@
 import type { Claim, IssueScore } from "@questline/shared";
-import { isBossRarity } from "@questline/shared";
 import { api } from "../lib/api";
-import { rarityClass, rarityLabel } from "../lib/rarity";
 import { storage } from "../lib/storage";
 
 type ClaimRecord = Claim & { issue_node_id?: string };
@@ -57,7 +55,7 @@ function createAction(row: HTMLElement, issueUrl: string, issueTitle: string): I
   const pill = document.createElement("span");
   pill.className = "ql-list-xp ql-list-xp-loading";
   pill.textContent = "··· XP";
-  pill.setAttribute("aria-label", `Rating quest ${issueTitle}`);
+  pill.setAttribute("aria-label", `Loading XP for ${issueTitle}`);
 
   const button = document.createElement("button");
   button.className = "ql-accept-button";
@@ -78,7 +76,7 @@ function claimIssueNodeId(claim: ClaimRecord) {
 function setClaimState(action: IssueAction, claim?: ClaimRecord) {
   action.button.disabled = false;
   action.button.classList.remove("ql-accept-button-done", "ql-accept-button-progress");
-  if (!claim || claim.status === "abandoned") {
+  if (!claim || claim.status === "abandoned" || claim.status === "closed") {
     action.button.textContent = "Claim";
     return;
   }
@@ -89,29 +87,25 @@ function setClaimState(action: IssueAction, claim?: ClaimRecord) {
     action.button.textContent = "In progress";
     return;
   }
+  if (claim.status === "submitted") {
+    action.button.classList.add("ql-accept-button-progress");
+    action.button.textContent = "In review";
+    return;
+  }
   action.button.classList.add("ql-accept-button-done");
-  action.button.textContent = claim.status === "merged" ? "Complete" : "Submitted";
+  action.button.textContent = "Complete";
 }
 
-/** Rarity is the board's visual language: colour and label both come from the server's stored tier. */
 function setQuestPill(action: IssueAction, score: IssueScore) {
   action.pill.classList.remove("ql-list-xp-loading");
-  action.pill.classList.add(rarityClass(score.rarity));
-  if (isBossRarity(score.rarity)) action.pill.classList.add("ql-list-boss");
-  action.pill.replaceChildren();
-  const rarity = document.createElement("span");
-  rarity.className = "ql-list-rarity";
-  rarity.textContent = rarityLabel(score.rarity);
-  const xp = document.createElement("b");
-  xp.textContent = `${score.xp.toLocaleString()} XP`;
-  action.pill.append(rarity, xp);
-  action.pill.setAttribute("aria-label", `${rarityLabel(score.rarity)} quest worth ${score.xp} XP`);
-  action.root.title = `Difficulty ${score.difficulty.toFixed(1)} / 10`;
+  action.pill.textContent = `${score.xp.toLocaleString()} XP`;
+  action.pill.setAttribute("aria-label", `Quest worth ${score.xp} XP`);
+  action.root.removeAttribute("title");
 }
 
 function setLoadError(action: IssueAction, error?: unknown) {
   action.pill.classList.remove("ql-list-xp-loading");
-  action.pill.textContent = "Not rated";
+  action.pill.textContent = "XP unavailable";
   action.button.textContent = "Claim";
   action.button.disabled = true;
   if (error instanceof Error) action.root.title = error.message;
@@ -124,7 +118,7 @@ function wireAccept(action: IssueAction, score: IssueScore, initialClaim?: Claim
   action.button.addEventListener("click", async (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (claim && claim.status !== "abandoned") return;
+    if (claim && claim.status !== "abandoned" && claim.status !== "closed") return;
 
     const token = await storage.token();
     if (!token) {

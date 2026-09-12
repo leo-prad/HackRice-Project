@@ -2,9 +2,10 @@ import { Router } from "express";
 import { requireAuth } from "../auth/jwt.js";
 import { query } from "../db.js";
 import { claimsForUser, toClaim, type ClaimRow } from "../services/claims.js";
+import { refreshSubmittedClaimsForUser } from "../services/claimRefresh.js";
 import { getPull, parsePullUrl, pullReferencesIssue } from "../services/github.js";
 import { getQuest } from "../services/scoring.js";
-import { finalizeLinkedClaim } from "../services/verification.js";
+import { refreshClaim } from "../services/verification.js";
 
 export const claimsRouter = Router();
 claimsRouter.use(requireAuth);
@@ -13,7 +14,11 @@ claimsRouter.post("/", async (req, res, next) => {
   try {
     if (typeof req.body?.issueNodeId !== "string") return res.status(400).json({ error: "issueNodeId is required" });
     const prior = await query<ClaimRow>("SELECT * FROM claims WHERE user_id=$1 AND issue_node_id=$2", [req.session!.userId, req.body.issueNodeId]);
-    if (prior.rowCount && prior.rows[0].status !== "abandoned") return res.status(409).json({ error: "You already have an active claim" });
+    // Closed PRs leave no XP on the ledger, so re-claiming is safe.
+    const reopenable = new Set(["abandoned", "closed"]);
+    if (prior.rowCount && !reopenable.has(prior.rows[0].status)) {
+      return res.status(409).json({ error: "You already have an active claim" });
+    }
     const result = prior.rowCount
       ? await query<ClaimRow>("UPDATE claims SET status='claimed',pr_url=NULL,pr_number=NULL,pr_repo=NULL,xp_awarded=0,claimed_at=now(),submitted_at=NULL,merged_at=NULL,completion_json=NULL WHERE id=$1 RETURNING *", [prior.rows[0].id])
       : await query<ClaimRow>("INSERT INTO claims (user_id,issue_node_id) VALUES ($1,$2) RETURNING *", [req.session!.userId, req.body.issueNodeId]);
@@ -25,7 +30,7 @@ claimsRouter.post("/", async (req, res, next) => {
   }
 });
 
-/** Links a PR and completes the quest. Author + issue reference are required; merge is not. */
+/** Links a PR. Author + issue reference required; XP waits for approval/merge. */
 claimsRouter.post("/:id/submit", async (req, res, next) => {
   try {
     if (typeof req.body?.prUrl !== "string") return res.status(400).json({ error: "prUrl is required" });
@@ -38,6 +43,9 @@ claimsRouter.post("/:id/submit", async (req, res, next) => {
     );
     if (!claim.rowCount) return res.status(404).json({ error: "Claim not found" });
     if (claim.rows[0].status === "merged") return res.status(409).json({ error: "This quest is already complete" });
+    if (claim.rows[0].status === "submitted") {
+      return res.json(await refreshClaim(Number(req.params.id), req.session!.userId));
+    }
 
     const pull = await getPull(parsed.owner, parsed.repo, parsed.number, claim.rows[0].github_token);
     if (String(pull.user.id) !== req.session!.githubId) {
@@ -54,7 +62,13 @@ claimsRouter.post("/:id/submit", async (req, res, next) => {
       [parsed.canonical, `${parsed.owner}/${parsed.repo}`, parsed.number, req.params.id],
     );
 
-    res.json(await finalizeLinkedClaim(Number(req.params.id), `Linked ${parsed.owner}/${parsed.repo}#${parsed.number}`));
+    await query(
+      "INSERT INTO xp_events (user_id, claim_id, issue_node_id, delta, kind, note) VALUES ($1,$2,$3,0,'claim_submitted',$4)",
+      [req.session!.userId, req.params.id, claim.rows[0].issue_node_id, "PR submitted — awaiting maintainer approval"],
+    );
+
+    // Settle immediately if the PR is already approved or merged; otherwise park as pending.
+    res.json(await refreshClaim(Number(req.params.id), req.session!.userId));
   } catch (error) { next(error); }
 });
 
@@ -72,6 +86,19 @@ claimsRouter.post("/:id/abandon", async (req, res, next) => {
 claimsRouter.get("/mine", async (req, res, next) => {
   try {
     res.json({ claims: await claimsForUser(req.session!.userId) });
+  } catch (error) { next(error); }
+});
+
+claimsRouter.post("/:id/refresh", async (req, res, next) => {
+  try {
+    res.json(await refreshClaim(Number(req.params.id), req.session!.userId));
+  } catch (error) { next(error); }
+});
+
+claimsRouter.post("/refresh-mine", async (req, res, next) => {
+  try {
+    const result = await refreshSubmittedClaimsForUser(req.session!.userId);
+    res.json(result);
   } catch (error) { next(error); }
 });
 

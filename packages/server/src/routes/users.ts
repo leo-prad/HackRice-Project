@@ -4,6 +4,7 @@ import { GROWTH_GOALS, achievementDef, levelProgress, skillCategory, skillLevel 
 import { requireAuth } from "../auth/jwt.js";
 import { query } from "../db.js";
 import { claimsForUser } from "../services/claims.js";
+import { refreshSubmittedClaimsForUser } from "../services/claimRefresh.js";
 import { buildPlayerProfile } from "../services/profileBuilder.js";
 
 export const usersRouter = Router();
@@ -89,6 +90,7 @@ async function loadProfile(userId: number): Promise<UserProfile | null> {
 
 usersRouter.get("/me", async (req, res, next) => {
   try {
+    await refreshSubmittedClaimsForUser(req.session!.userId).catch(() => {});
     const profile = await loadProfile(req.session!.userId);
     if (!profile) return res.status(404).json({ error: "Player not found" });
     res.json(profile);

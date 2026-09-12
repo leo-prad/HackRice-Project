@@ -128,7 +128,7 @@ export interface IssueScore {
 /** Product language: an issue score is a Quest. */
 export type Quest = IssueScore;
 
-export type ClaimStatus = "claimed" | "submitted" | "merged" | "abandoned";
+export type ClaimStatus = "claimed" | "submitted" | "merged" | "abandoned" | "closed";
 
 export interface Claim {
   id: number;

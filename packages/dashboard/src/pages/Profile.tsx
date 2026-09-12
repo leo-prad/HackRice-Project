@@ -4,7 +4,6 @@ import { ArrowUpRight, CheckCircle2, Link2, Swords, Trophy } from "lucide-react"
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { api } from "../lib/api";
-import { RARITY_STYLE, rarityLabel } from "../lib/rarity";
 
 const CATEGORY_ORDER: SkillCategory[] = ["Backend", "Frontend", "Systems", "Data", "Practices", "Other"];
 
@@ -51,10 +50,9 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="mt-12 grid gap-4 sm:grid-cols-4">
+      <div className="mt-12 grid gap-4 sm:grid-cols-3">
         <Stat icon={<Trophy />} label="Total XP" value={profile.user.totalXp.toLocaleString()} />
         <Stat icon={<CheckCircle2 />} label="Quests completed" value={String(profile.stats.questsCompleted)} />
-        <Stat icon={<Swords />} label="Bosses defeated" value={String(profile.stats.bossesDefeated)} />
         <Stat icon={<Trophy />} label="Global rank" value={profile.stats.globalRank ? `#${profile.stats.globalRank}` : "—"} />
       </div>
 
@@ -127,11 +125,6 @@ export default function Profile() {
                       {quest?.questKey ?? ""} · {claim.status}
                     </small>
                   </span>
-                  {quest && (
-                    <span className={`rounded-full border px-2 py-0.5 font-mono text-[9px] ${RARITY_STYLE[quest.rarity]}`}>
-                      {rarityLabel(quest.rarity)}
-                    </span>
-                  )}
                   <span className="font-mono text-xs font-bold text-acid">{(claim.xpAwarded || quest?.xp || 0).toLocaleString()} XP</span>
                   <ArrowUpRight className="text-slate-700" size={15} />
                 </a>

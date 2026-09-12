@@ -53,8 +53,8 @@ async function unlockAchievements(client: PoolClient, claim: LockedClaim, quests
 }
 
 /**
- * Pays a claim exactly once when a qualifying PR is linked. Returns the Quest Complete payload,
- * or the stored payload when the claim was already settled.
+ * Pays a claim exactly once when a submitted PR is approved or merged.
+ * Linking the PR alone grants nothing — see claimRefresh.
  */
 export async function completeClaim(claimId: number, note: string): Promise<QuestCompletion | null> {
   return withTransaction(async (client) => {
@@ -72,12 +72,12 @@ export async function completeClaim(claimId: number, note: string): Promise<Ques
     const claim = locked.rows[0];
 
     const alreadyPaid = await client.query(
-      "SELECT 1 FROM xp_events WHERE claim_id = $1 AND kind IN ('pr_merged','claim_complete') LIMIT 1",
+      "SELECT 1 FROM xp_events WHERE claim_id = $1 AND kind IN ('pr_merged','claim_complete','claim_approved') LIMIT 1",
       [claimId],
     );
     if (alreadyPaid.rowCount || claim.status === "merged") return claim.completion_json;
-    if (claim.status !== "submitted" && claim.status !== "claimed") {
-      throw Object.assign(new Error("Link your pull request before completing the quest"), { status: 409 });
+    if (claim.status !== "submitted") {
+      throw Object.assign(new Error("PR must be linked and awaiting approval before XP can be released"), { status: 409 });
     }
 
     const multiplier = String(claim.github_id) === String(claim.repo_owner_id) ? 0.25 : 1;
@@ -144,5 +144,23 @@ export async function completeClaim(claimId: number, note: string): Promise<Ques
     };
     await client.query("UPDATE claims SET completion_json = $1 WHERE id = $2", [JSON.stringify(completion), claimId]);
     return completion;
+  });
+}
+
+/** Closed without merge/approval — no XP; player can re-claim later. */
+export async function markClaimClosed(claimId: number, userId: number) {
+  return withTransaction(async (client) => {
+    const locked = await client.query(
+      "SELECT * FROM claims WHERE id=$1 AND user_id=$2 FOR UPDATE",
+      [claimId, userId],
+    );
+    if (!locked.rowCount) return null;
+    const claim = locked.rows[0];
+    if (claim.status !== "submitted") return claim;
+    const updated = await client.query(
+      "UPDATE claims SET status='closed' WHERE id=$1 RETURNING *",
+      [claimId],
+    );
+    return updated.rows[0];
   });
 }

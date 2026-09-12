@@ -34,9 +34,9 @@ export default function Login() {
       <section className="border-y border-white/[.06] bg-white/[.018]">
         <div className="mx-auto grid max-w-6xl gap-px px-5 py-0 sm:grid-cols-3">
           {[
-            [Chrome, "Quest Board on GitHub", "Issues become Common, Rare, Epic, Legendary, and Boss fights."],
+            [Chrome, "Quest Board on GitHub", "Open issues become XP bounties right on the GitHub list."],
             [Sparkles, "One canonical XP value", "AI analyzes the issue. The backend assigns XP. Every player sees the same bounty."],
-            [Trophy, "Proof over promises", "Link a PR you authored that closes the issue — that’s how XP unlocks."],
+            [Trophy, "Proof over promises", "Link a PR you authored. XP unlocks when a maintainer approves or merges it."],
           ].map(([Icon, title, body]) => (
             <div key={String(title)} className="border-white/[.06] px-8 py-12 sm:border-l last:border-r">
               <Icon className="mb-5 text-acid" size={22} />
@@ -57,10 +57,10 @@ function QuestPreview() {
       <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-panel shadow-2xl">
         <div className="h-1 bg-gradient-to-r from-transparent via-violet to-transparent" />
         <div className="p-8">
-          <p className="font-mono text-[10px] font-bold tracking-[.22em] text-violet">LEGENDARY QUEST</p>
+          <p className="font-mono text-[10px] font-bold tracking-[.22em] text-violet">QUEST BOUNTY</p>
           <p className="mt-3 font-semibold">Fix Concurrent Cache Mutation</p>
           <div className="mt-2 text-6xl font-black tracking-[-.07em] text-violet text-glow">760 <span className="text-base tracking-normal">XP</span></div>
-          <p className="mt-4 font-mono text-[11px] text-slate-500">Difficulty 7.6 / 10 · Python IV · Concurrency IV</p>
+          <p className="mt-4 font-mono text-[11px] text-slate-500">Python · Concurrency · open 12 days</p>
           <button className="mt-7 flex w-full items-center justify-between rounded-xl bg-violet px-4 py-3.5 font-extrabold text-ink">
             Claim quest <ArrowRight size={18} />
           </button>

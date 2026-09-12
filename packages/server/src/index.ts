@@ -7,6 +7,7 @@ import { issuesRouter } from "./routes/issues.js";
 import { leaderboardRouter } from "./routes/leaderboard.js";
 import { questsRouter } from "./routes/quests.js";
 import { usersRouter } from "./routes/users.js";
+import { startMergePolling } from "./jobs/pollMerges.js";
 
 const app = express();
 app.use(cors({ origin: true }));
@@ -26,4 +27,5 @@ app.use((error: any, _req: express.Request, res: express.Response, _next: expres
 const port = Number(process.env.PORT) || 8787;
 app.listen(port, () => {
   console.log(`GitQuest API ready on http://localhost:${port}`);
+  startMergePolling();
 });
